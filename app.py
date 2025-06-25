@@ -82,4 +82,4 @@ if delegacion:
             st.success(f"✅ Evaluación guardada como '{estado.upper()}' para {delegacion}")
             st.json(resultado)
 
-            # Aquí se podrá conectar con Google Sheets o guardar respaldo en Excel más adelante
+            
