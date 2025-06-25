@@ -5,7 +5,7 @@ import pandas as pd
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista completa de delegaciones
+# Lista de delegaciones
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -30,6 +30,10 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
+# Base temporal de resultados
+if "resultados" not in st.session_state:
+    st.session_state["resultados"] = []
+
 # Selección de delegación
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
 
@@ -52,15 +56,13 @@ if delegacion:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
                     accion_estrategica = st.text_input("Acción Estratégica", key=f"ae_{tipo}_{linea_num}")
-                    ejemplo_ae = st.text_area("Ejemplo Acción Estratégica", key=f"ej_ae_{tipo}_{linea_num}")
+                    ejemplo_ae = st.radio("¿Se presentó ejemplo de la acción estratégica?", ["Sí", "No"], key=f"ej_ae_{tipo}_{linea_num}")
 
                     indicador = st.text_input("Indicador", key=f"ind_{tipo}_{linea_num}")
-                    ejemplo_ind = st.text_area("Ejemplo Indicador", key=f"ej_ind_{tipo}_{linea_num}")
+                    ejemplo_ind = st.radio("¿Se presentó ejemplo del indicador?", ["Sí", "No"], key=f"ej_ind_{tipo}_{linea_num}")
 
                     meta = st.text_input("Meta", key=f"meta_{tipo}_{linea_num}")
-                    ejemplo_meta = st.text_area("Ejemplo Meta", key=f"ej_meta_{tipo}_{linea_num}")
-
-                    cumple = st.radio("¿Cumple la meta?", ["Sí", "No"], key=f"cumple_{tipo}_{linea_num}")
+                    ejemplo_meta = st.radio("¿Se presentó ejemplo de la meta?", ["Sí", "No"], key=f"ej_meta_{tipo}_{linea_num}")
 
                     lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
                     cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
@@ -68,28 +70,29 @@ if delegacion:
                     submitted = st.form_submit_button("Guardar Evaluación")
 
                     if submitted:
-                        estado = "✅ Cumple" if cumple == "Sí" else "❌ No Cumple"
-                        color = "green" if cumple == "Sí" else "red"
+                        # Validación de la meta
+                        meta_valida = meta.strip() not in ["", "No", "no", "n/a", "N/A"]
+                        estado = "✅ Cumple" if meta_valida else "❌ No Cumple"
+                        color = "green" if meta_valida else "red"
 
                         st.markdown(f"<h5 style='color:{color}'>{estado}</h5>", unsafe_allow_html=True)
 
                         resultado = {
                             "Delegación": delegacion,
                             "Tipo de Línea": tipo,
-                            "Línea de Acción": linea_num,
-                            "Acción Estratégica": accion_estrategica,
-                            "Ejemplo AE": ejemplo_ae,
-                            "Indicador": indicador,
-                            "Ejemplo Indicador": ejemplo_ind,
-                            "Meta": meta,
-                            "Ejemplo Meta": ejemplo_meta,
-                            "Cumple Meta": cumple,
-                            "Líder Estratégico": lider,
-                            "Cogestores": cogestores,
+                            "Línea": linea_num,
                             "Estado": estado
                         }
 
-                        st.success(f"✅ Evaluación guardada para Línea #{linea_num} - {tipo}")
-                        st.json(resultado)
+                        st.session_state["resultados"].append(resultado)
+                        st.success(f"Evaluación guardada para Línea #{linea_num} - {tipo}")
+
+    # Mostrar resumen de estados guardados
+    if st.session_state["resultados"]:
+        st.markdown("---")
+        st.subheader("📊 Resumen de Estados por Delegación")
+        df_resultados = pd.DataFrame(st.session_state["resultados"])
+        st.dataframe(df_resultados, use_container_width=True)
+
 
             
