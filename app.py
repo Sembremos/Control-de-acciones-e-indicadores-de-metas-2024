@@ -3,8 +3,9 @@ import pandas as pd
 
 # Configuración de la app
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
+st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista completa de delegaciones en formato DXX - Nombre
+# Lista completa de delegaciones
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -29,57 +30,66 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-st.title("📋 Seguimiento de Líneas de Acción por Delegación")
-
-# Buscador de delegaciones
+# Selección de delegación
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
 
 if delegacion:
-    tipo_linea = st.radio("Tipo de línea de acción", ["Fuerza Pública", "Gobierno Local"])
+    st.subheader("Tipo de línea de acción")
+    tipo_lineas = st.multiselect(
+        "Puede seleccionar uno o ambos tipos",
+        ["Fuerza Pública", "Gobierno Local"]
+    )
 
-    with st.form("form_linea_accion"):
-        st.subheader("📝 Información de la Línea de Acción")
+    for tipo in tipo_lineas:
+        st.markdown(f"---\n### 🛡️ Registro para: {tipo}")
+        lineas = st.multiselect(
+            f"Números de línea de acción para {tipo} (1-10)",
+            list(range(1, 11)),
+            key=f"lineas_{tipo}"
+        )
 
-        linea_num = st.number_input("Número de línea de acción (1-10)", min_value=1, max_value=10, step=1)
+        for linea_num in lineas:
+            with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
+                with st.form(key=f"form_{tipo}_{linea_num}"):
+                    accion_estrategica = st.text_input("Acción Estratégica", key=f"ae_{tipo}_{linea_num}")
+                    ejemplo_ae = st.text_area("Ejemplo Acción Estratégica", key=f"ej_ae_{tipo}_{linea_num}")
 
-        accion_estrategica = st.text_input("Acción Estratégica")
-        ejemplo_ae = st.text_area("¿Hubo un ejemplo para la Acción Estratégica?", placeholder="Describa el ejemplo si aplica")
+                    indicador = st.text_input("Indicador", key=f"ind_{tipo}_{linea_num}")
+                    ejemplo_ind = st.text_area("Ejemplo Indicador", key=f"ej_ind_{tipo}_{linea_num}")
 
-        indicador = st.text_input("Indicador")
-        ejemplo_ind = st.text_area("¿Hubo un ejemplo para el Indicador?", placeholder="Describa el ejemplo si aplica")
+                    meta = st.text_input("Meta", key=f"meta_{tipo}_{linea_num}")
+                    ejemplo_meta = st.text_area("Ejemplo Meta", key=f"ej_meta_{tipo}_{linea_num}")
 
-        meta = st.text_input("Meta")
-        ejemplo_meta = st.text_area("¿Hubo un ejemplo para la Meta?", placeholder="Describa el ejemplo si aplica")
+                    cumple = st.radio("¿Cumple la meta?", ["Sí", "No"], key=f"cumple_{tipo}_{linea_num}")
 
-        lider = st.text_input("Líder Estratégico")
-        cogestores = st.text_area("Cogestores", placeholder="Ingrese los nombres separados por coma")
+                    lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
+                    cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
 
-        submitted = st.form_submit_button("Guardar Evaluación")
+                    submitted = st.form_submit_button("Guardar Evaluación")
 
-        if submitted:
-            estado = "terminado"
+                    if submitted:
+                        estado = "✅ Cumple" if cumple == "Sí" else "❌ No Cumple"
+                        color = "green" if cumple == "Sí" else "red"
 
-            # Validación de la meta
-            meta_invalida = meta.strip().lower() in ["", "no aplica", "mal", "falta", "n/a"]
-            if meta_invalida:
-                estado = "pendiente"
+                        st.markdown(f"<h5 style='color:{color}'>{estado}</h5>", unsafe_allow_html=True)
 
-            resultado = {
-                "Delegación": delegacion,
-                "Tipo de Línea": tipo_linea,
-                "Línea de Acción": linea_num,
-                "Acción Estratégica": accion_estrategica,
-                "Ejemplo AE": ejemplo_ae,
-                "Indicador": indicador,
-                "Ejemplo Indicador": ejemplo_ind,
-                "Meta": meta,
-                "Ejemplo Meta": ejemplo_meta,
-                "Líder Estratégico": lider,
-                "Cogestores": cogestores,
-                "Estado": estado
-            }
+                        resultado = {
+                            "Delegación": delegacion,
+                            "Tipo de Línea": tipo,
+                            "Línea de Acción": linea_num,
+                            "Acción Estratégica": accion_estrategica,
+                            "Ejemplo AE": ejemplo_ae,
+                            "Indicador": indicador,
+                            "Ejemplo Indicador": ejemplo_ind,
+                            "Meta": meta,
+                            "Ejemplo Meta": ejemplo_meta,
+                            "Cumple Meta": cumple,
+                            "Líder Estratégico": lider,
+                            "Cogestores": cogestores,
+                            "Estado": estado
+                        }
 
-            st.success(f"✅ Evaluación guardada como '{estado.upper()}' para {delegacion}")
-            st.json(resultado)
+                        st.success(f"✅ Evaluación guardada para Línea #{linea_num} - {tipo}")
+                        st.json(resultado)
 
             
