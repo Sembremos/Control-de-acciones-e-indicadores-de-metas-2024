@@ -56,16 +56,18 @@ if delegacion:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
                     accion_estrategica = st.text_input("Acción Estratégica", key=f"ae_{tipo}_{linea_num}")
-                    ejemplo_ae = st.radio("¿Se presentó ejemplo de la acción estratégica?", ["Sí", "No"], key=f"ej_ae_{tipo}_{linea_num}")
+                    ejemplo_ae = st.radio("Ejemplo de Acción Estratégica", ["Sí", "No"], key=f"ej_ae_{tipo}_{linea_num}")
 
                     indicador = st.text_input("Indicador", key=f"ind_{tipo}_{linea_num}")
-                    ejemplo_ind = st.radio("¿Se presentó ejemplo del indicador?", ["Sí", "No"], key=f"ej_ind_{tipo}_{linea_num}")
+                    ejemplo_ind = st.radio("Ejemplo del Indicador", ["Sí", "No"], key=f"ej_ind_{tipo}_{linea_num}")
 
                     meta = st.text_input("Meta", key=f"meta_{tipo}_{linea_num}")
-                    ejemplo_meta = st.radio("¿Se presentó ejemplo de la meta?", ["Sí", "No"], key=f"ej_meta_{tipo}_{linea_num}")
+                    ejemplo_meta = st.radio("Ejemplo de la Meta", ["Sí", "No"], key=f"ej_meta_{tipo}_{linea_num}")
 
                     lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
                     cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
+
+                    observacion = st.text_area("📝 Observación general", key=f"obs_{tipo}_{linea_num}")
 
                     submitted = st.form_submit_button("Guardar Evaluación")
 
@@ -81,6 +83,15 @@ if delegacion:
                             "Delegación": delegacion,
                             "Tipo de Línea": tipo,
                             "Línea": linea_num,
+                            "Acción Estratégica": accion_estrategica,
+                            "Ejemplo AE": ejemplo_ae,
+                            "Indicador": indicador,
+                            "Ejemplo Indicador": ejemplo_ind,
+                            "Meta": meta,
+                            "Ejemplo Meta": ejemplo_meta,
+                            "Líder": lider,
+                            "Cogestores": cogestores,
+                            "Observación": observacion,
                             "Estado": estado
                         }
 
