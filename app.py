@@ -1,15 +1,22 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
+from supabase import create_client, Client
 
 # ---------------------------------------------
-# 📌 PARTE 1: Configuración inicial y delegaciones
+# 📌 PARTE 1: Configuración inicial y Supabase
 # ---------------------------------------------
 
-# Configura la interfaz de Streamlit
+# Conexión a Supabase
+SUPABASE_URL = "https://zutgkfioubpepebjraid.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dGdrZmlvdWJwZXBlYmpyYWlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNTA4MDksImV4cCI6MjA2NjYyNjgwOX0.dUzaSY2YC9Jp1oQEClKTDvaRZMNEzmwd486XY-ibPS8"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Inicializar la app
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista completa y ordenada de delegaciones oficiales
+# Lista de delegaciones
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -33,23 +40,15 @@ delegaciones = sorted([
     'D91 - Talamanca', 'D92 - Matina', 'D93 - Guácimo', 'D94 - Golfito', 'D95 - Coto Brus',
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
+# ---------------------------------------------
+# 📌 PARTE 2: Formulario de Evaluación y Guardado en Supabase
+# ---------------------------------------------
 
-# Inicializa la lista de resultados si no existe
-if "resultados" not in st.session_state:
-    st.session_state["resultados"] = []
-
-# Selección de delegación activa
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
-# ---------------------------------------------
-# 📌 PARTE 2: Selección de tipo de línea y formulario de evaluación
-# ---------------------------------------------
 
 if delegacion:
     st.subheader("Tipo de línea de acción")
-    tipo_lineas = st.multiselect(
-        "Puede seleccionar uno o ambos tipos",
-        ["Fuerza Pública", "Gobierno Local"]
-    )
+    tipo_lineas = st.multiselect("Puede seleccionar uno o ambos tipos", ["Fuerza Pública", "Gobierno Local"])
 
     for tipo in tipo_lineas:
         st.markdown(f"---\n### 🛡️ Registro para: {tipo}")
@@ -63,9 +62,6 @@ if delegacion:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
 
-                    # -------------------
-                    # Campos de evaluación SÍ/NO
-                    # -------------------
                     st.markdown("**Acción Estratégica**")
                     accion_estrategica = st.radio("", ["Sí", "No"], key=f"val_ae_{tipo}_{linea_num}")
 
@@ -81,15 +77,11 @@ if delegacion:
                     st.markdown("**Cogestores**")
                     cogestores = st.radio("", ["Sí", "No"], key=f"val_cog_{tipo}_{linea_num}")
 
-                    # -------------------
-                    # Observación final general
-                    # -------------------
                     observacion = st.text_area("📝 Observación general", key=f"obs_{tipo}_{linea_num}")
 
                     submitted = st.form_submit_button("Guardar Evaluación")
 
                     if submitted:
-                        # Evaluar estado final
                         ae_ok = accion_estrategica == "Sí"
                         ind_ok = indicador == "Sí"
                         meta_ok = meta == "Sí"
@@ -98,40 +90,134 @@ if delegacion:
 
                         if not meta_ok:
                             estado = "❌ Rechazado"
-                        elif meta_ok and (not ae_ok or not ind_ok or not lider_ok or not cog_ok):
+                        elif not (ae_ok and ind_ok and lider_ok and cog_ok):
                             estado = "🕓 Pendiente"
                         else:
                             estado = "✅ Completo"
 
-                        resultado = {
-                            "Delegación": delegacion,
-                            "Tipo de Línea": tipo,
-                            "Línea": linea_num,
-                            "Acción Estratégica": accion_estrategica,
-                            "Indicador": indicador,
-                            "Meta": meta,
-                            "Líder Estratégico": lider,
-                            "Cogestores": cogestores,
-                            "Observación": observacion,
-                            "Estado": estado
+                        # Guardar en Supabase
+                        data = {
+                            "delegacion": delegacion,
+                            "tipo_linea": tipo,
+                            "linea_num": linea_num,
+                            "accion_estrategica": accion_estrategica,
+                            "indicador": indicador,
+                            "meta": meta,
+                            "lider": lider,
+                            "cogestores": cogestores,
+                            "observacion": observacion,
+                            "estado": estado
                         }
 
-                        st.session_state["resultados"].append(resultado)
+                        supabase.table("evaluaciones").insert(data).execute()
                         st.success(f"✅ Evaluación guardada para Línea #{linea_num} - {tipo}")
+
+                        st.experimental_rerun()  # Reiniciar el formulario automáticamente
 # ---------------------------------------------
-# 📌 PARTE 3: Mostrar resumen agrupado por estado
+# 📌 PARTE 3: Ver, editar, eliminar y exportar datos
 # ---------------------------------------------
 
-if st.session_state["resultados"]:
-    st.markdown("---")
-    st.subheader("📊 Resumen de Evaluaciones por Estado")
+st.markdown("---")
+st.subheader("📊 Evaluaciones Guardadas")
 
-    df_resultados = pd.DataFrame(st.session_state["resultados"])
+# Obtener todos los datos desde Supabase
+respuesta = supabase.table("evaluaciones").select("*").order("fecha_registro", desc=True).execute()
+registros = respuesta.data
 
-    # Agrupar por estado
+if registros:
+    df = pd.DataFrame(registros)
+
+    delegaciones_disponibles = df["delegacion"].unique().tolist()
+    delegacion_filtro = st.selectbox("Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
+
+    if delegacion_filtro != "Todas":
+        df = df[df["delegacion"] == delegacion_filtro]
+
     for estado in ["✅ Completo", "🕓 Pendiente", "❌ Rechazado"]:
-        df_estado = df_resultados[df_resultados["Estado"] == estado]
+        df_estado = df[df["estado"] == estado]
 
         if not df_estado.empty:
             with st.expander(f"{estado} - {len(df_estado)} registro(s)", expanded=False):
-                st.dataframe(df_estado.reset_index(drop=True), use_container_width=True)
+                for _, row in df_estado.iterrows():
+                    col1, col2, col3 = st.columns([5, 2, 2])
+                    with col1:
+                        st.markdown(f"**Delegación:** {row['delegacion']}  \n"
+                                    f"**Tipo:** {row['tipo_linea']}  \n"
+                                    f"**Línea:** {row['linea_num']}  \n"
+                                    f"**Estado:** {row['estado']}")
+                    with col2:
+                        if st.button("✏️ Editar", key=f"edit_{row['id']}"):
+                            st.warning("🔧 Funcionalidad de edición será implementada aquí.")
+                    with col3:
+                        if st.button("🗑️ Eliminar", key=f"delete_{row['id']}"):
+                            supabase.table("evaluaciones").delete().eq("id", row["id"]).execute()
+                            st.success("Registro eliminado correctamente.")
+                            st.experimental_rerun()
+
+    # Descarga a Excel
+    st.markdown("---")
+    st.subheader("📥 Exportar a Excel")
+    df_export = pd.DataFrame(registros)
+    df_export = df_export.drop(columns=["id"])
+    st.download_button("📁 Descargar todas las evaluaciones", data=df_export.to_csv(index=False).encode("utf-8"),
+                       file_name="evaluaciones.csv", mime="text/csv")
+else:
+    st.info("No hay evaluaciones registradas aún.")
+# ---------------------------------------------
+# 🛠️ Edición de registros seleccionados
+# ---------------------------------------------
+if "editar_id" not in st.session_state:
+    st.session_state.editar_id = None
+
+# Al hacer clic en "Editar", se guarda el ID
+for row in registros:
+    if st.session_state.get(f"edit_{row['id']}", False):
+        st.session_state.editar_id = row["id"]
+
+# Mostrar formulario si hay un registro en modo edición
+if st.session_state.editar_id:
+    editar_data = next((r for r in registros if r["id"] == st.session_state.editar_id), None)
+
+    if editar_data:
+        st.markdown("---")
+        st.subheader(f"✏️ Editar Evaluación: {editar_data['delegacion']} - Línea #{editar_data['linea_num']}")
+
+        with st.form("editar_form"):
+            accion_estrategica = st.radio("Acción Estratégica", ["Sí", "No"], index=0 if editar_data["accion_estrategica"] == "Sí" else 1)
+            indicador = st.radio("Indicador", ["Sí", "No"], index=0 if editar_data["indicador"] == "Sí" else 1)
+            meta = st.radio("Meta", ["Sí", "No"], index=0 if editar_data["meta"] == "Sí" else 1)
+            lider = st.radio("Líder Estratégico", ["Sí", "No"], index=0 if editar_data["lider"] == "Sí" else 1)
+            cogestores = st.radio("Cogestores", ["Sí", "No"], index=0 if editar_data["cogestores"] == "Sí" else 1)
+            observacion = st.text_area("📝 Observación general", value=editar_data["observacion"] or "")
+
+            guardar_cambios = st.form_submit_button("💾 Guardar cambios")
+
+            if guardar_cambios:
+                # Recalcular estado
+                ae_ok = accion_estrategica == "Sí"
+                ind_ok = indicador == "Sí"
+                meta_ok = meta == "Sí"
+                lider_ok = lider == "Sí"
+                cog_ok = cogestores == "Sí"
+
+                if not meta_ok:
+                    estado = "❌ Rechazado"
+                elif not (ae_ok and ind_ok and lider_ok and cog_ok):
+                    estado = "🕓 Pendiente"
+                else:
+                    estado = "✅ Completo"
+
+                # Actualizar en Supabase
+                supabase.table("evaluaciones").update({
+                    "accion_estrategica": accion_estrategica,
+                    "indicador": indicador,
+                    "meta": meta,
+                    "lider": lider,
+                    "cogestores": cogestores,
+                    "observacion": observacion,
+                    "estado": estado
+                }).eq("id", editar_data["id"]).execute()
+
+                st.success("✅ Cambios guardados correctamente.")
+                st.session_state.editar_id = None
+                st.experimental_rerun()
