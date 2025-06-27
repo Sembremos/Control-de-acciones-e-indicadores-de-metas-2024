@@ -127,16 +127,11 @@ if delegacion:
                         }
 
                         insertar_respuesta(nuevo_registro)
-
                         st.success(f"✅ Evaluación registrada para Línea #{linea_num} - {tipo}")
 
-                        # Limpiar los campos de formulario
-                        st.session_state[f"accion_{tipo}_{linea_num}"] = None
-                        st.session_state[f"indicador_{tipo}_{linea_num}"] = None
-                        st.session_state[f"meta_{tipo}_{linea_num}"] = None
-                        st.session_state[f"lider_{tipo}_{linea_num}"] = None
-                        st.session_state[f"cogestores_{tipo}_{linea_num}"] = None
-                        st.session_state[f"observacion_{tipo}_{linea_num}"] = ""
+                        # Reiniciar toda la app para limpiar widgets
+                        st.rerun()
+
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
 # -----------------------------------------
@@ -174,11 +169,12 @@ if respuestas:
             if col1.button("✏️ Editar", key=f"editar_{fila['id']}"):
                 st.session_state["modo_edicion"] = True
                 st.session_state["respuesta_editando"] = fila
+                st.rerun()
 
             if col2.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
                 eliminar_respuesta(fila["id"])
                 st.success("🗑️ Respuesta eliminada correctamente.")
-                st.experimental_rerun()
+                st.rerun()
 
     # Botón de descarga
     st.markdown("### 📥 Descargar todas las respuestas")
@@ -187,6 +183,7 @@ if respuestas:
 
 else:
     st.info("Aún no hay respuestas registradas.")
+
 # -----------------------------------------
 # ✏️ MODO EDICIÓN DE RESPUESTA
 # -----------------------------------------
@@ -204,8 +201,9 @@ if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
         cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], index=0 if fila["cogestores"] == "Sí" else 1)
         observacion = st.text_area("📝 Observación general", value=fila["observacion"])
 
-        guardar = st.form_submit_button("💾 Guardar Cambios")
-        cancelar = st.form_submit_button("❌ Cancelar")
+        col1, col2 = st.columns(2)
+        guardar = col1.form_submit_button("💾 Guardar Cambios")
+        cancelar = col2.form_submit_button("❌ Cancelar")
 
         if guardar:
             # Evaluar nuevo estado
@@ -231,11 +229,12 @@ if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
             st.success("✅ Respuesta actualizada correctamente.")
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
-            st.experimental_rerun()
+            st.rerun()
 
         if cancelar:
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.warning("⚠️ Edición cancelada.")
+
 
 
