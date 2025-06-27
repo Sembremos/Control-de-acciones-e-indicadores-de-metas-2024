@@ -1,11 +1,13 @@
+# ---------------------------------------------
+# 📌 PARTE 1: Configuración inicial y delegaciones
+# ---------------------------------------------
 import streamlit as st
 import pandas as pd
 
-# Configuración de la app
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista completa de delegaciones
+# Lista completa de delegaciones oficiales
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -30,12 +32,15 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Base temporal de resultados
+# Inicializa resultados si no existen en sesión
 if "resultados" not in st.session_state:
     st.session_state["resultados"] = []
 
-# Selección de delegación
+# Selector de delegación
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
+# ---------------------------------------------
+# 📌 PARTE 2: Registro de Líneas por tipo y evaluación
+# ---------------------------------------------
 if delegacion:
     st.subheader("Tipo de línea de acción")
     tipo_lineas = st.multiselect(
@@ -55,13 +60,13 @@ if delegacion:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
                     accion_estrategica = st.text_input("Acción Estratégica", key=f"ae_{tipo}_{linea_num}")
-                    ae_valida = st.checkbox("✔ Ejemplo presentado de Acción Estratégica", key=f"val_ae_{tipo}_{linea_num}")
+                    ae_valida = st.radio("", ["Sí", "No"], key=f"val_ae_{tipo}_{linea_num}")
 
                     indicador = st.text_input("Indicador", key=f"ind_{tipo}_{linea_num}")
-                    ind_valido = st.checkbox("✔ Ejemplo presentado del Indicador", key=f"val_ind_{tipo}_{linea_num}")
+                    ind_valido = st.radio("", ["Sí", "No"], key=f"val_ind_{tipo}_{linea_num}")
 
                     meta = st.text_input("Meta", key=f"meta_{tipo}_{linea_num}")
-                    meta_valida = st.checkbox("✔ Ejemplo presentado de la Meta", key=f"val_meta_{tipo}_{linea_num}")
+                    meta_valida = st.radio("", ["Sí", "No"], key=f"val_meta_{tipo}_{linea_num}")
 
                     lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
                     cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
@@ -71,10 +76,15 @@ if delegacion:
                     submitted = st.form_submit_button("Guardar Evaluación")
 
                     if submitted:
-                        # Lógica de estado
-                        if not meta_valida:
+                        # Convertir valores tipo radio a booleano
+                        ae_ok = ae_valida == "Sí"
+                        ind_ok = ind_valido == "Sí"
+                        meta_ok = meta_valida == "Sí"
+
+                        # Determinar estado
+                        if not meta_ok:
                             estado = "❌ Rechazado"
-                        elif meta_valida and (not ae_valida or not ind_valido):
+                        elif meta_ok and (not ae_ok or not ind_ok):
                             estado = "🕓 Pendiente"
                         else:
                             estado = "✅ Completo"
@@ -94,26 +104,27 @@ if delegacion:
 
                         st.session_state["resultados"].append(resultado)
                         st.success(f"Evaluación guardada para Línea #{linea_num} - {tipo}")
-    # Mostrar resumen de estados guardados
-    if st.session_state["resultados"]:
-        st.markdown("---")
-        st.subheader("📊 Resumen de Estados por Delegación")
+# ---------------------------------------------
+# 📌 PARTE 3: Resumen de resultados y exportación
+# ---------------------------------------------
+if st.session_state["resultados"]:
+    st.markdown("---")
+    st.subheader("📊 Resumen de Estados por Delegación")
 
-        df_resultados = pd.DataFrame(st.session_state["resultados"])
+    df_resultados = pd.DataFrame(st.session_state["resultados"])
 
-        # Mostrar por estado en secciones expandibles
-        for estado in sorted(df_resultados["Estado"].unique()):
-            with st.expander(f"{estado} - Ver detalles"):
-                st.dataframe(df_resultados[df_resultados["Estado"] == estado], use_container_width=True)
+    # Mostrar resultados por estado en secciones separadas
+    for estado in sorted(df_resultados["Estado"].unique()):
+        with st.expander(f"{estado} - Ver detalles"):
+            st.dataframe(df_resultados[df_resultados["Estado"] == estado], use_container_width=True)
 
-        # Botón para descargar Excel
-        st.download_button(
-            label="📥 Descargar resumen en Excel",
-            data=df_resultados.to_excel(index=False, engine='openpyxl'),
-            file_name="resumen_evaluacion.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
+    # Exportar resultados en Excel
+    st.download_button(
+        label="📥 Descargar resumen en Excel",
+        data=df_resultados.to_excel(index=False, engine='openpyxl'),
+        file_name="resumen_evaluacion.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
             
