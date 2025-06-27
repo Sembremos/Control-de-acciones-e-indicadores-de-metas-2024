@@ -61,7 +61,7 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Inicialización de estados de edición
+# Inicialización de estado
 if "modo_edicion" not in st.session_state:
     st.session_state["modo_edicion"] = False
 if "respuesta_editando" not in st.session_state:
@@ -91,7 +91,6 @@ if delegacion:
         for linea_num in lineas:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
-
                     accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], key=f"accion_{tipo}_{linea_num}")
                     indicador = st.radio("¿Cumple Indicador?", ["Sí", "No"], key=f"indicador_{tipo}_{linea_num}")
                     meta = st.radio("¿Cumple Meta?", ["Sí", "No"], key=f"meta_{tipo}_{linea_num}")
@@ -103,7 +102,6 @@ if delegacion:
                     submitted = st.form_submit_button("Guardar Evaluación")
 
                     if submitted:
-                        # Evaluar estado final
                         if meta == "No":
                             estado = "❌ Incompleto"
                         elif accion == "Sí" and indicador == "Sí" and lider == "Sí" and cogestores == "Sí":
@@ -111,7 +109,6 @@ if delegacion:
                         else:
                             estado = "🕗 Pendiente"
 
-                        # Preparar registro
                         nuevo_registro = {
                             "delegacion": delegacion,
                             "tipo": tipo,
@@ -127,16 +124,20 @@ if delegacion:
                         }
 
                         insertar_respuesta(nuevo_registro)
-
                         st.success(f"✅ Evaluación registrada para Línea #{linea_num} - {tipo}")
 
-                        # Limpiar los campos del formulario
-                        st.session_state[f"accion_{tipo}_{linea_num}"] = None
-                        st.session_state[f"indicador_{tipo}_{linea_num}"] = None
-                        st.session_state[f"meta_{tipo}_{linea_num}"] = None
-                        st.session_state[f"lider_{tipo}_{linea_num}"] = None
-                        st.session_state[f"cogestores_{tipo}_{linea_num}"] = None
-                        st.session_state[f"observacion_{tipo}_{linea_num}"] = ""
+                        # Limpieza segura de campos
+                        for clave in [
+                            f"accion_{tipo}_{linea_num}",
+                            f"indicador_{tipo}_{linea_num}",
+                            f"meta_{tipo}_{linea_num}",
+                            f"lider_{tipo}_{linea_num}",
+                            f"cogestores_{tipo}_{linea_num}",
+                            f"observacion_{tipo}_{linea_num}"
+                        ]:
+                            st.session_state.pop(clave, None)
+
+                        st.rerun()
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
 # -----------------------------------------
@@ -177,12 +178,12 @@ if respuestas:
             col1, col2 = st.columns(2)
             if col1.button("✏️ Editar", key=f"editar_{fila['id']}"):
                 st.session_state["modo_edicion"] = True
-                st.session_state["respuesta_editando"] = fila.to_dict()  # ← CORREGIDO
+                st.session_state["respuesta_editando"] = fila.to_dict()
 
             if col2.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
                 eliminar_respuesta(fila["id"])
                 st.success("🗑️ Respuesta eliminada correctamente.")
-                st.experimental_rerun()
+                st.rerun()
 
     # Botón de descarga
     st.markdown("### 📥 Descargar todas las respuestas")
@@ -241,11 +242,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
             st.session_state["respuesta_editando"] = None
             st.rerun()
 
-
         if cancelar:
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.warning("⚠️ Edición cancelada.")
-
-
-
