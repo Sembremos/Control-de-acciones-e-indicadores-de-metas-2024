@@ -239,7 +239,8 @@ if modo_edicion and isinstance(respuesta_editando, dict):
             st.success("✅ Respuesta actualizada correctamente.")
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
-            st.experimental_rerun()
+            st.rerun()
+
 
         if cancelar:
             st.session_state["modo_edicion"] = False
