@@ -130,7 +130,7 @@ if delegacion:
 
                         st.success(f"✅ Evaluación registrada para Línea #{linea_num} - {tipo}")
 
-                        # Limpiar los campos de formulario
+                        # Limpiar los campos del formulario
                         st.session_state[f"accion_{tipo}_{linea_num}"] = None
                         st.session_state[f"indicador_{tipo}_{linea_num}"] = None
                         st.session_state[f"meta_{tipo}_{linea_num}"] = None
@@ -148,6 +148,10 @@ respuestas = obtener_respuestas()
 if respuestas:
     df = pd.DataFrame(respuestas)
     df = df.sort_values(by=["delegacion", "tipo", "linea"])
+
+    # Convertir fecha al formato dd/mm/yyyy
+    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
+
     st.dataframe(df, use_container_width=True)
 
     # Agrupador por delegación
@@ -173,7 +177,7 @@ if respuestas:
             col1, col2 = st.columns(2)
             if col1.button("✏️ Editar", key=f"editar_{fila['id']}"):
                 st.session_state["modo_edicion"] = True
-                st.session_state["respuesta_editando"] = fila
+                st.session_state["respuesta_editando"] = fila.to_dict()  # ← CORREGIDO
 
             if col2.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
                 eliminar_respuesta(fila["id"])
@@ -190,11 +194,14 @@ else:
 # -----------------------------------------
 # ✏️ MODO EDICIÓN DE RESPUESTA
 # -----------------------------------------
-if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
+respuesta_editando = st.session_state.get("respuesta_editando")
+modo_edicion = st.session_state.get("modo_edicion")
+
+if modo_edicion and isinstance(respuesta_editando, dict):
     st.markdown("---")
     st.subheader("✏️ Editar respuesta registrada")
 
-    fila = st.session_state["respuesta_editando"]
+    fila = respuesta_editando
 
     with st.form("form_editar_respuesta"):
         accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], index=0 if fila["accion"] == "Sí" else 1)
@@ -204,8 +211,9 @@ if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
         cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], index=0 if fila["cogestores"] == "Sí" else 1)
         observacion = st.text_area("📝 Observación general", value=fila["observacion"])
 
-        guardar = st.form_submit_button("💾 Guardar Cambios")
-        cancelar = st.form_submit_button("❌ Cancelar")
+        col1, col2 = st.columns(2)
+        guardar = col1.form_submit_button("💾 Guardar Cambios")
+        cancelar = col2.form_submit_button("❌ Cancelar")
 
         if guardar:
             # Evaluar nuevo estado
@@ -237,7 +245,6 @@ if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.warning("⚠️ Edición cancelada.")
-
 
 
 
