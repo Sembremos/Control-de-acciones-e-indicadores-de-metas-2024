@@ -5,7 +5,7 @@ import pandas as pd
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista de delegaciones
+# Lista completa de delegaciones
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -36,7 +36,6 @@ if "resultados" not in st.session_state:
 
 # Selección de delegación
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
-
 if delegacion:
     st.subheader("Tipo de línea de acción")
     tipo_lineas = st.multiselect(
@@ -56,13 +55,13 @@ if delegacion:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
                     accion_estrategica = st.text_input("Acción Estratégica", key=f"ae_{tipo}_{linea_num}")
-                    ejemplo_ae = st.radio("Ejemplo de Acción Estratégica", ["Sí", "No"], key=f"ej_ae_{tipo}_{linea_num}")
+                    ae_valida = st.checkbox("✔ Ejemplo presentado de Acción Estratégica", key=f"val_ae_{tipo}_{linea_num}")
 
                     indicador = st.text_input("Indicador", key=f"ind_{tipo}_{linea_num}")
-                    ejemplo_ind = st.radio("Ejemplo del Indicador", ["Sí", "No"], key=f"ej_ind_{tipo}_{linea_num}")
+                    ind_valido = st.checkbox("✔ Ejemplo presentado del Indicador", key=f"val_ind_{tipo}_{linea_num}")
 
                     meta = st.text_input("Meta", key=f"meta_{tipo}_{linea_num}")
-                    ejemplo_meta = st.radio("Ejemplo de la Meta", ["Sí", "No"], key=f"ej_meta_{tipo}_{linea_num}")
+                    meta_valida = st.checkbox("✔ Ejemplo presentado de la Meta", key=f"val_meta_{tipo}_{linea_num}")
 
                     lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
                     cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
@@ -72,23 +71,21 @@ if delegacion:
                     submitted = st.form_submit_button("Guardar Evaluación")
 
                     if submitted:
-                        # Validación de la meta
-                        meta_valida = meta.strip() not in ["", "No", "no", "n/a", "N/A"]
-                        estado = "✅ Cumple" if meta_valida else "❌ No Cumple"
-                        color = "green" if meta_valida else "red"
-
-                        st.markdown(f"<h5 style='color:{color}'>{estado}</h5>", unsafe_allow_html=True)
+                        # Lógica de estado
+                        if not meta_valida:
+                            estado = "❌ Rechazado"
+                        elif meta_valida and (not ae_valida or not ind_valido):
+                            estado = "🕓 Pendiente"
+                        else:
+                            estado = "✅ Completo"
 
                         resultado = {
                             "Delegación": delegacion,
                             "Tipo de Línea": tipo,
                             "Línea": linea_num,
                             "Acción Estratégica": accion_estrategica,
-                            "Ejemplo AE": ejemplo_ae,
                             "Indicador": indicador,
-                            "Ejemplo Indicador": ejemplo_ind,
                             "Meta": meta,
-                            "Ejemplo Meta": ejemplo_meta,
                             "Líder": lider,
                             "Cogestores": cogestores,
                             "Observación": observacion,
@@ -97,13 +94,26 @@ if delegacion:
 
                         st.session_state["resultados"].append(resultado)
                         st.success(f"Evaluación guardada para Línea #{linea_num} - {tipo}")
-
     # Mostrar resumen de estados guardados
     if st.session_state["resultados"]:
         st.markdown("---")
         st.subheader("📊 Resumen de Estados por Delegación")
+
         df_resultados = pd.DataFrame(st.session_state["resultados"])
-        st.dataframe(df_resultados, use_container_width=True)
+
+        # Mostrar por estado en secciones expandibles
+        for estado in sorted(df_resultados["Estado"].unique()):
+            with st.expander(f"{estado} - Ver detalles"):
+                st.dataframe(df_resultados[df_resultados["Estado"] == estado], use_container_width=True)
+
+        # Botón para descargar Excel
+        st.download_button(
+            label="📥 Descargar resumen en Excel",
+            data=df_resultados.to_excel(index=False, engine='openpyxl'),
+            file_name="resumen_evaluacion.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
 
 
             
