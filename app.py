@@ -1,29 +1,42 @@
-# -----------------------------------------------------------
-# app.py — Seguimiento de Indicadores y Metas por Delegación
-# -----------------------------------------------------------
-
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 from supabase import create_client, Client
+from datetime import datetime
 
-# -------------------------------
-# 🔌 Conexión a Supabase
-# -------------------------------
+# -----------------------------------------
+# 🔧 CONFIGURACIÓN SUPABASE
+# -----------------------------------------
 SUPABASE_URL = "https://zutgkfioubpepebjraid.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dGdrZmlvdWJwZXBlYmpyYWlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNTA4MDksImV4cCI6MjA2NjYyNjgwOX0.dUzaSY2YC9Jp1oQEClKTDvaRZMNEzmwd486XY-ibPS8"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# -------------------------------
-# ⚙️ Configuración general
-# -------------------------------
-st.set_page_config(page_title="Control de Indicadores", layout="wide")
+# -----------------------------------------
+# 🧱 FUNCIONES BASE DE DATOS
+# -----------------------------------------
+def insertar_respuesta(data: dict):
+    response = supabase.table("respuestas").insert(data).execute()
+    return response
+
+def obtener_respuestas():
+    response = supabase.table("respuestas").select("*").execute()
+    return response.data if response.data else []
+
+def actualizar_respuesta(id_respuesta: int, nuevos_datos: dict):
+    response = supabase.table("respuestas").update(nuevos_datos).eq("id", id_respuesta).execute()
+    return response
+
+def eliminar_respuesta(id_respuesta: int):
+    response = supabase.table("respuestas").delete().eq("id", id_respuesta).execute()
+    return response
+
+# -----------------------------------------
+# ⚙️ CONFIG STREAMLIT Y LISTA BASE
+# -----------------------------------------
+st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# -------------------------------
-# 🗂️ Lista de delegaciones válidas
-# -------------------------------
+# Lista de delegaciones válidas
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -47,23 +60,30 @@ delegaciones = sorted([
     'D91 - Talamanca', 'D92 - Matina', 'D93 - Guácimo', 'D94 - Golfito', 'D95 - Coto Brus',
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
-# ---------------------------------------
-# 📝 Registro de Evaluación
-# ---------------------------------------
+
+# Inicialización de estados de edición
+if "modo_edicion" not in st.session_state:
+    st.session_state["modo_edicion"] = False
+if "respuesta_editando" not in st.session_state:
+    st.session_state["respuesta_editando"] = None
+# -----------------------------------------
+# 📝 REGISTRO DE LÍNEAS DE ACCIÓN
+# -----------------------------------------
+st.markdown("### ✏️ Registrar evaluación por delegación")
 
 delegacion = st.selectbox("Selecciona una delegación", delegaciones)
 
 if delegacion:
     tipo_lineas = st.multiselect(
-        "Selecciona el tipo de línea de acción",
+        "Selecciona el/los tipo(s) de línea de acción",
         ["Fuerza Pública", "Gobierno Local"]
     )
 
     for tipo in tipo_lineas:
-        st.markdown(f"---\n### 🛡️ Evaluación para: {tipo}")
+        st.markdown(f"---\n#### 🛡️ Evaluación para: {tipo}")
 
         lineas = st.multiselect(
-            f"Líneas de acción del {tipo} (1-10)",
+            f"Número(s) de línea de acción para {tipo} (1-10)",
             list(range(1, 11)),
             key=f"lineas_{tipo}"
         )
@@ -71,133 +91,152 @@ if delegacion:
         for linea_num in lineas:
             with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
                 with st.form(key=f"form_{tipo}_{linea_num}"):
-                    st.write("**¿Cumple con la Acción Estratégica?**")
-                    accion_estrategica = st.radio("", ["Sí", "No"], key=f"accion_{tipo}_{linea_num}")
 
-                    st.write("**¿Cumple con el Indicador?**")
-                    indicador = st.radio("", ["Sí", "No"], key=f"indicador_{tipo}_{linea_num}")
+                    accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], key=f"accion_{tipo}_{linea_num}")
+                    indicador = st.radio("¿Cumple Indicador?", ["Sí", "No"], key=f"indicador_{tipo}_{linea_num}")
+                    meta = st.radio("¿Cumple Meta?", ["Sí", "No"], key=f"meta_{tipo}_{linea_num}")
+                    lider = st.radio("¿Líder Estratégico Asignado?", ["Sí", "No"], key=f"lider_{tipo}_{linea_num}")
+                    cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], key=f"cogestores_{tipo}_{linea_num}")
 
-                    st.write("**¿Cumple con la Meta?**")
-                    meta = st.radio("", ["Sí", "No"], key=f"meta_{tipo}_{linea_num}")
+                    observacion = st.text_area("📝 Observación general", key=f"observacion_{tipo}_{linea_num}")
 
-                    lider = st.text_input("Líder Estratégico", key=f"lider_{tipo}_{linea_num}")
-                    cogestores = st.text_area("Cogestores (separados por coma)", key=f"cog_{tipo}_{linea_num}")
-                    observacion = st.text_area("📝 Observación general", key=f"obs_{tipo}_{linea_num}")
+                    submitted = st.form_submit_button("Guardar Evaluación")
 
-                    guardar = st.form_submit_button("Guardar Evaluación")
-
-                    if guardar:
-                        # Determinar estado final
+                    if submitted:
+                        # Evaluar estado final
                         if meta == "No":
-                            estado = "❌ No Cumple"
-                        elif meta == "Sí" and (accion_estrategica == "No" or indicador == "No"):
-                            estado = "🟡 Pendiente"
-                        else:
+                            estado = "❌ Incompleto"
+                        elif accion == "Sí" and indicador == "Sí" and lider == "Sí" and cogestores == "Sí":
                             estado = "✅ Completo"
+                        else:
+                            estado = "🕗 Pendiente"
 
-                        datos = {
+                        # Preparar registro
+                        nuevo_registro = {
                             "delegacion": delegacion,
-                            "tipo_linea": tipo,
+                            "tipo": tipo,
                             "linea": linea_num,
-                            "accion_estrategica": accion_estrategica,
+                            "accion": accion,
                             "indicador": indicador,
                             "meta": meta,
                             "lider": lider,
                             "cogestores": cogestores,
                             "observacion": observacion,
                             "estado": estado,
-                            "fecha": datetime.utcnow().isoformat()
+                            "fecha": datetime.now().isoformat()
                         }
 
-                        insertar_respuesta(datos)
-                        st.success("✅ Evaluación guardada correctamente")
+                        insertar_respuesta(nuevo_registro)
 
-                        # Reinicio de campos tras guardar
-                        for campo in [
-                            f"accion_{tipo}_{linea_num}", f"indicador_{tipo}_{linea_num}", f"meta_{tipo}_{linea_num}",
-                            f"lider_{tipo}_{linea_num}", f"cog_{tipo}_{linea_num}", f"obs_{tipo}_{linea_num}"
-                        ]:
-                            if campo in st.session_state:
-                                del st.session_state[campo]
-# ---------------------------------------
-# 📊 Resumen de Evaluaciones Guardadas
-# ---------------------------------------
+                        st.success(f"✅ Evaluación registrada para Línea #{linea_num} - {tipo}")
 
+                        # Limpiar los campos de formulario
+                        st.session_state[f"accion_{tipo}_{linea_num}"] = None
+                        st.session_state[f"indicador_{tipo}_{linea_num}"] = None
+                        st.session_state[f"meta_{tipo}_{linea_num}"] = None
+                        st.session_state[f"lider_{tipo}_{linea_num}"] = None
+                        st.session_state[f"cogestores_{tipo}_{linea_num}"] = None
+                        st.session_state[f"observacion_{tipo}_{linea_num}"] = ""
+# -----------------------------------------
+# 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
+# -----------------------------------------
 st.markdown("---")
-st.subheader("📁 Historial de Evaluaciones")
+st.subheader("📁 Respuestas guardadas")
 
-# Obtener datos desde Supabase
 respuestas = obtener_respuestas()
 
 if respuestas:
     df = pd.DataFrame(respuestas)
-
-    # Formatear fecha a dd/mm/yyyy
-    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
-
-    # Filtro por delegación
-    delegaciones_filtradas = df["delegacion"].unique()
-    seleccion = st.selectbox("Filtrar por delegación", ["Todas"] + sorted(delegaciones_filtradas))
-
-    if seleccion != "Todas":
-        df = df[df["delegacion"] == seleccion]
-
-    # Mostrar tabla
+    df = df.sort_values(by=["delegacion", "tipo", "linea"])
     st.dataframe(df, use_container_width=True)
 
-    # Selección para edición
-    st.markdown("### ✏️ Editar Evaluación")
-    id_editar = st.selectbox("Selecciona el ID a editar", df["id"].astype(str), index=0)
-    registro = df[df["id"].astype(str) == id_editar].iloc[0]
+    # Agrupador por delegación
+    delegaciones_disponibles = df["delegacion"].unique().tolist()
+    delegacion_filtro = st.selectbox("🔍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
 
-    with st.form("editar_formulario"):
-        nuevo_estado = st.selectbox("Nuevo estado", ["✅ Completo", "🟡 Pendiente", "❌ No Cumple"],
-                                    index=["✅ Completo", "🟡 Pendiente", "❌ No Cumple"].index(registro["estado"]))
-        nueva_obs = st.text_area("Nueva observación general", value=registro["observacion"])
+    if delegacion_filtro != "Todas":
+        df_filtrado = df[df["delegacion"] == delegacion_filtro]
+    else:
+        df_filtrado = df
 
-        if st.form_submit_button("Actualizar Evaluación"):
-            actualizar_respuesta(registro["id"], nuevo_estado, nueva_obs)
-            st.success("✅ Evaluación actualizada")
-            st.experimental_rerun()
+    st.markdown("### 📌 Detalles por delegación")
+    for idx, fila in df_filtrado.iterrows():
+        with st.expander(f"🗂️ {fila['delegacion']} - Línea {fila['linea']} ({fila['tipo']}) [{fila['estado']}]"):
+            st.write(f"**Acción Estratégica:** {fila['accion']}")
+            st.write(f"**Indicador:** {fila['indicador']}")
+            st.write(f"**Meta:** {fila['meta']}")
+            st.write(f"**Líder Estratégico:** {fila['lider']}")
+            st.write(f"**Cogestores:** {fila['cogestores']}")
+            st.write(f"**Observación:** {fila['observacion']}")
+            st.write(f"**Fecha:** {fila['fecha']}")
 
-    # Botón de eliminación
-    st.markdown("### 🗑️ Eliminar Evaluación")
-    if st.button("Eliminar evaluación seleccionada"):
-        eliminar_respuesta(registro["id"])
-        st.warning("⚠️ Evaluación eliminada correctamente")
-        st.experimental_rerun()
+            col1, col2 = st.columns(2)
+            if col1.button("✏️ Editar", key=f"editar_{fila['id']}"):
+                st.session_state["modo_edicion"] = True
+                st.session_state["respuesta_editando"] = fila
+
+            if col2.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
+                eliminar_respuesta(fila["id"])
+                st.success("🗑️ Respuesta eliminada correctamente.")
+                st.experimental_rerun()
 
     # Botón de descarga
-    st.markdown("### 💾 Descargar Excel")
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("Descargar archivo CSV", csv, "evaluaciones.csv", "text/csv")
+    st.markdown("### 📥 Descargar todas las respuestas")
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("📄 Descargar en CSV", csv, "respuestas_delegaciones.csv", "text/csv")
+
 else:
-    st.info("Aún no se han registrado evaluaciones.")
-# ---------------------------------------
-# 🛠️ Funciones CRUD con Supabase
-# ---------------------------------------
+    st.info("Aún no hay respuestas registradas.")
+# -----------------------------------------
+# ✏️ MODO EDICIÓN DE RESPUESTA
+# -----------------------------------------
+if st.session_state["modo_edicion"] and st.session_state["respuesta_editando"]:
+    st.markdown("---")
+    st.subheader("✏️ Editar respuesta registrada")
 
-def insertar_respuesta(data: dict):
-    """Insertar nueva evaluación en la tabla 'respuestas'."""
-    supabase.table("respuestas").insert(data).execute()
+    fila = st.session_state["respuesta_editando"]
 
-def obtener_respuestas():
-    """Obtener todas las evaluaciones guardadas."""
-    response = supabase.table("respuestas").select("*").order("fecha", desc=True).execute()
-    return response.data if response.data else []
+    with st.form("form_editar_respuesta"):
+        accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], index=0 if fila["accion"] == "Sí" else 1)
+        indicador = st.radio("¿Cumple Indicador?", ["Sí", "No"], index=0 if fila["indicador"] == "Sí" else 1)
+        meta = st.radio("¿Cumple Meta?", ["Sí", "No"], index=0 if fila["meta"] == "Sí" else 1)
+        lider = st.radio("¿Líder Estratégico Asignado?", ["Sí", "No"], index=0 if fila["lider"] == "Sí" else 1)
+        cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], index=0 if fila["cogestores"] == "Sí" else 1)
+        observacion = st.text_area("📝 Observación general", value=fila["observacion"])
 
-def eliminar_respuesta(respuesta_id: int):
-    """Eliminar evaluación por ID."""
-    supabase.table("respuestas").delete().eq("id", respuesta_id).execute()
+        guardar = st.form_submit_button("💾 Guardar Cambios")
+        cancelar = st.form_submit_button("❌ Cancelar")
 
-def actualizar_respuesta(respuesta_id: int, estado: str, observacion: str):
-    """Actualizar el estado y observación de una evaluación."""
-    supabase.table("respuestas").update({
-        "estado": estado,
-        "observacion": observacion,
-        "fecha": datetime.utcnow().isoformat()
-    }).eq("id", respuesta_id).execute()
+        if guardar:
+            # Evaluar nuevo estado
+            if meta == "No":
+                estado = "❌ Incompleto"
+            elif accion == "Sí" and indicador == "Sí" and lider == "Sí" and cogestores == "Sí":
+                estado = "✅ Completo"
+            else:
+                estado = "🕗 Pendiente"
 
+            nuevos_datos = {
+                "accion": accion,
+                "indicador": indicador,
+                "meta": meta,
+                "lider": lider,
+                "cogestores": cogestores,
+                "observacion": observacion,
+                "estado": estado,
+                "fecha": datetime.now().isoformat()
+            }
+
+            actualizar_respuesta(fila["id"], nuevos_datos)
+            st.success("✅ Respuesta actualizada correctamente.")
+            st.session_state["modo_edicion"] = False
+            st.session_state["respuesta_editando"] = None
+            st.experimental_rerun()
+
+        if cancelar:
+            st.session_state["modo_edicion"] = False
+            st.session_state["respuesta_editando"] = None
+            st.warning("⚠️ Edición cancelada.")
 
 
 
