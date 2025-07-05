@@ -260,7 +260,6 @@ if delegacion and tipo_lider and lineas_seleccionadas:
                 meta = st.text_input("🎯 Meta (puede ser texto o número)", key=f"meta_{linea}")
                 estado = st.selectbox("📈 Estado actual", ["Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
 
-                # Trimestres
                 col1, col2, col3, col4 = st.columns(4)
                 t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
                 t2 = col2.number_input("T2", min_value=0, step=1, key=f"t2_{linea}")
@@ -300,10 +299,10 @@ respuestas = obtener_respuestas()
 if respuestas:
     df = pd.DataFrame(respuestas)
 
-    # Convertir fecha
+    # Convertir fecha al formato legible
     df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Filtros
+    # Filtros dinámicos
     col1, col2, col3 = st.columns(3)
 
     delegaciones_disponibles = sorted(df["delegacion"].dropna().unique())
@@ -311,46 +310,43 @@ if respuestas:
     trimestres = ["Todos", "1", "2", "3", "4"]
 
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
-    filtro_tipo = col2.selectbox("👤 Filtrar por tipo", ["Todos"] + tipos_disponibles)
+    filtro_tipo = col2.selectbox("👤 Filtrar por tipo de liderazgo", ["Todos"] + tipos_disponibles)
     filtro_trimestre = col3.selectbox("📅 Filtrar por trimestre", trimestres)
 
+    # Aplicar filtros
     df_filtrado = df.copy()
-
     if filtro_delegacion != "Todas":
         df_filtrado = df_filtrado[df_filtrado["delegacion"] == filtro_delegacion]
     if filtro_tipo != "Todos":
         df_filtrado = df_filtrado[df_filtrado["tipo"] == filtro_tipo]
-
     if filtro_trimestre in ["1", "2", "3", "4"]:
-        trimestre_col = f"trimestre{filtro_trimestre}"
-        df_filtrado = df_filtrado[df_filtrado[trimestre_col] > 0]
+        df_filtrado = df_filtrado[df_filtrado[f"trimestre{filtro_trimestre}"] > 0]
 
-    # Ordenar resultados
     df_filtrado = df_filtrado.sort_values(by=["delegacion", "tipo", "linea"])
 
     st.markdown("### 📌 Detalles por línea de acción")
+
     for _, fila in df_filtrado.iterrows():
         with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila['estado']}]"):
-            st.write(f"**Indicador:** {fila['indicador']}")
-            st.write(f"**Meta:** {fila['meta']}")
+            st.write(f"**Tipo de Indicador:** {fila.get('indicador', '')}")
+            st.write(f"**Meta:** {fila.get('meta', '')}")
             st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
             st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
             st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
             st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
             st.write(f"**Detalle:** {fila.get('detalle', '')}")
-            st.write(f"**Fecha:** {fila['fecha']}")
+            st.write(f"**Fecha:** {fila.get('fecha', '')}")
 
             col_edit, col_del = st.columns(2)
-
             if col_edit.button("✏️ Editar", key=f"editar_{fila['id']}"):
                 st.session_state["modo_edicion"] = True
                 st.session_state["respuesta_editando"] = fila.to_dict()
-                st.experimental_rerun()
+                st.rerun()
 
             if col_del.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
                 eliminar_respuesta(fila["id"])
                 st.success("✅ Registro eliminado correctamente.")
-                st.experimental_rerun()
+                st.rerun()
 else:
     st.info("Aún no hay respuestas registradas.")
 # -----------------------------------------
@@ -372,7 +368,11 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
         meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
-        estado = st.selectbox("📈 Estado", ["Completa", "Con actividades", "Sin actividades"], index=["Completa", "Con actividades", "Sin actividades"].index(fila.get("estado", "Sin actividades")))
+        estado = st.selectbox(
+            "📈 Estado",
+            ["Completa", "Con actividades", "Sin actividades"],
+            index=["Completa", "Con actividades", "Sin actividades"].index(fila.get("estado", "Sin actividades"))
+        )
 
         col1, col2, col3, col4 = st.columns(4)
         t1 = col1.number_input("T1", min_value=0, step=1, value=int(fila.get("trimestre1", 0)))
@@ -418,7 +418,7 @@ st.subheader("📤 Descargar respaldo de información")
 if respuestas:
     df_exportar = pd.DataFrame(respuestas)
 
-    # Asegurar columnas en orden lógico
+    # Asegurar orden lógico de columnas
     columnas_ordenadas = [
         "delegacion", "tipo", "linea", "indicador", "meta", "estado",
         "trimestre1", "trimestre2", "trimestre3", "trimestre4",
@@ -430,7 +430,7 @@ if respuestas:
     # Formato de fecha legible
     df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar columnas para mejor presentación en Excel
+    # Renombrar columnas para presentación clara en Excel
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
@@ -442,11 +442,11 @@ if respuestas:
         "trimestre2": "Trimestre 2",
         "trimestre3": "Trimestre 3",
         "trimestre4": "Trimestre 4",
-        "detalle": "Detalle de Cumplimiento",
+        "detalle": "Detalle del Cumplimiento",
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Generar CSV
+    # Crear y ofrecer el archivo CSV
     csv = df_exportar.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📄 Descargar en Excel (CSV)",
@@ -456,4 +456,3 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
-
