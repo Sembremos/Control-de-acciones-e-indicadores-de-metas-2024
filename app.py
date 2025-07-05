@@ -58,26 +58,23 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Inicializar estado de edición
+# Inicializar variables de sesión para edición
 if "modo_edicion" not in st.session_state:
     st.session_state["modo_edicion"] = False
 if "respuesta_editando" not in st.session_state:
     st.session_state["respuesta_editando"] = None
 
 # -----------------------------------------
-# 📝 REGISTRO: LÍDER ESTRATÉGICO
+# 📝 SELECCIÓN DE DELEGACIÓN Y TIPO
 # -----------------------------------------
-st.markdown("### ✏️ Registro por Delegación y Líder Estratégico")
+st.markdown("### ✏️ Registro de líneas de acción estratégicas")
+
 delegacion = st.selectbox("📍 Selecciona una delegación", delegaciones)
 
-# -----------------------------------------
-# 🧭 Tipo de liderazgo (una sola opción)
-# -----------------------------------------
 tipo_lider = st.selectbox(
     "👤 Tipo de liderazgo estratégico",
     ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
 )
-
 # -----------------------------------------
 # 📚 Selección de líneas temáticas
 # -----------------------------------------
@@ -286,14 +283,11 @@ if delegacion and tipo_lider and lineas_seleccionadas:
                         "trimestre2": t2,
                         "trimestre3": t3,
                         "trimestre4": t4,
-                        "detalle": detalle,
-                        "fecha": datetime.now().isoformat()
+                        "detalle": detalle
                     }
                     insertar_respuesta(datos)
                     st.success(f"✅ Registro guardado para: {linea}")
                     st.rerun()
-
-
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y FILTROS DE RESPUESTAS
 # -----------------------------------------
@@ -375,7 +369,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
         meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
 
-        # Corrección segura del estado
+        # Manejo seguro del valor de estado
         estado_valores = ["Completa", "Con actividades", "Sin actividades"]
         estado_actual = fila.get("estado", "Sin actividades")
         estado_index = estado_valores.index(estado_actual) if estado_actual in estado_valores else 2
@@ -389,7 +383,6 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", ""))
 
-        # ✅ Botones dentro del formulario (evita el error de submit button)
         col_guardar, col_cancelar = st.columns(2)
         guardar = col_guardar.form_submit_button("💾 Guardar Cambios")
         cancelar = col_cancelar.form_submit_button("❌ Cancelar")
@@ -403,8 +396,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
                 "trimestre2": t2,
                 "trimestre3": t3,
                 "trimestre4": t4,
-                "detalle": detalle,
-                "fecha": datetime.now().isoformat()
+                "detalle": detalle
             }
             actualizar_respuesta(fila["id"], nuevos_datos)
             st.success("✅ Registro actualizado correctamente.")
@@ -417,7 +409,6 @@ if modo_edicion and isinstance(respuesta_editando, dict):
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.rerun()
-
 # -----------------------------------------
 # 📥 DESCARGA DE RESPALDO EN EXCEL (CSV)
 # -----------------------------------------
@@ -427,7 +418,7 @@ st.subheader("📤 Descargar respaldo de información")
 if respuestas:
     df_exportar = pd.DataFrame(respuestas)
 
-    # Asegurar orden lógico de columnas
+    # Orden lógico de columnas esperadas
     columnas_ordenadas = [
         "delegacion", "tipo", "linea", "indicador", "meta", "estado",
         "trimestre1", "trimestre2", "trimestre3", "trimestre4",
@@ -436,10 +427,10 @@ if respuestas:
     columnas_existentes = [col for col in columnas_ordenadas if col in df_exportar.columns]
     df_exportar = df_exportar[columnas_existentes].copy()
 
-    # Formato de fecha legible
+    # Formato legible de fecha
     df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar columnas para presentación clara en Excel
+    # Renombrar para que quede bonito en Excel
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
@@ -455,8 +446,10 @@ if respuestas:
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Crear y ofrecer el archivo CSV
+    # Crear el archivo CSV
     csv = df_exportar.to_csv(index=False).encode("utf-8")
+
+    # Botón de descarga
     st.download_button(
         label="📄 Descargar en Excel (CSV)",
         data=csv,
@@ -465,3 +458,4 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
+
