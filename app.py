@@ -15,20 +15,17 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # 🧱 FUNCIONES BASE DE DATOS
 # -----------------------------------------
 def insertar_respuesta(data: dict):
-    response = supabase.table("respuestas").insert(data).execute()
-    return response
+    return supabase.table("respuestas").insert(data).execute()
 
 def obtener_respuestas():
     response = supabase.table("respuestas").select("*").execute()
     return response.data if response.data else []
 
 def actualizar_respuesta(id_respuesta: int, nuevos_datos: dict):
-    response = supabase.table("respuestas").update(nuevos_datos).eq("id", id_respuesta).execute()
-    return response
+    return supabase.table("respuestas").update(nuevos_datos).eq("id", id_respuesta).execute()
 
 def eliminar_respuesta(id_respuesta: int):
-    response = supabase.table("respuestas").delete().eq("id", id_respuesta).execute()
-    return response
+    return supabase.table("respuestas").delete().eq("id", id_respuesta).execute()
 
 # -----------------------------------------
 # ⚙️ CONFIG STREAMLIT Y LISTA BASE
@@ -36,7 +33,7 @@ def eliminar_respuesta(id_respuesta: int):
 st.set_page_config(page_title="Seguimiento Delegaciones", layout="wide")
 st.title("📋 Seguimiento de Líneas de Acción por Delegación")
 
-# Lista de delegaciones válidas
+# Lista completa de delegaciones
 delegaciones = sorted([
     'D01 - Carmen', 'D02 - Merced', 'D03 - Hospital', 'D04 - Catedral', 'D05 - San Sebastián',
     'D06 - Hatillo', 'D07 - Zapote / San Francisco', 'D08 - Pavas', 'D09 - Uruca',
@@ -61,85 +58,239 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Inicialización de estado
+# Inicializar estado de edición
 if "modo_edicion" not in st.session_state:
     st.session_state["modo_edicion"] = False
 if "respuesta_editando" not in st.session_state:
     st.session_state["respuesta_editando"] = None
+
 # -----------------------------------------
-# 📝 REGISTRO DE LÍNEAS DE ACCIÓN
+# 📝 REGISTRO: LÍDER ESTRATÉGICO
 # -----------------------------------------
-st.markdown("### ✏️ Registrar evaluación por delegación")
+st.markdown("### ✏️ Registro por Delegación y Líder Estratégico")
+delegacion = st.selectbox("📍 Selecciona una delegación", delegaciones)
 
-delegacion = st.selectbox("Selecciona una delegación", delegaciones)
-
-if delegacion:
-    tipo_lineas = st.multiselect(
-        "Selecciona el/los tipo(s) de línea de acción",
-        ["Fuerza Pública", "Gobierno Local"]
-    )
-
-    for tipo in tipo_lineas:
-        st.markdown(f"---\n#### 🛡️ Evaluación para: {tipo}")
-
-        lineas = st.multiselect(
-            f"Número(s) de línea de acción para {tipo} (1-10)",
-            list(range(1, 11)),
-            key=f"lineas_{tipo}"
-        )
-
-        for linea_num in lineas:
-            with st.expander(f"📄 Línea de Acción #{linea_num} - {tipo}"):
-                with st.form(key=f"form_{tipo}_{linea_num}"):
-                    accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], key=f"accion_{tipo}_{linea_num}")
-                    indicador = st.radio("¿Cumple Indicador?", ["Sí", "No"], key=f"indicador_{tipo}_{linea_num}")
-                    meta = st.radio("¿Cumple Meta?", ["Sí", "No"], key=f"meta_{tipo}_{linea_num}")
-                    lider = st.radio("¿Líder Estratégico Asignado?", ["Sí", "No"], key=f"lider_{tipo}_{linea_num}")
-                    cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], key=f"cogestores_{tipo}_{linea_num}")
-
-                    observacion = st.text_area("📝 Observación general", key=f"observacion_{tipo}_{linea_num}")
-
-                    submitted = st.form_submit_button("Guardar Evaluación")
-
-                    if submitted:
-                        if meta == "No":
-                            estado = "❌ Incompleto"
-                        elif accion == "Sí" and indicador == "Sí" and lider == "Sí" and cogestores == "Sí":
-                            estado = "✅ Completo"
-                        else:
-                            estado = "🕗 Pendiente"
-
-                        nuevo_registro = {
-                            "delegacion": delegacion,
-                            "tipo": tipo,
-                            "linea": linea_num,
-                            "accion": accion,
-                            "indicador": indicador,
-                            "meta": meta,
-                            "lider": lider,
-                            "cogestores": cogestores,
-                            "observacion": observacion,
-                            "estado": estado,
-                            "fecha": datetime.now().isoformat()
-                        }
-
-                        insertar_respuesta(nuevo_registro)
-                        st.success(f"✅ Evaluación registrada para Línea #{linea_num} - {tipo}")
-
-                        # Limpieza segura de campos
-                        for clave in [
-                            f"accion_{tipo}_{linea_num}",
-                            f"indicador_{tipo}_{linea_num}",
-                            f"meta_{tipo}_{linea_num}",
-                            f"lider_{tipo}_{linea_num}",
-                            f"cogestores_{tipo}_{linea_num}",
-                            f"observacion_{tipo}_{linea_num}"
-                        ]:
-                            st.session_state.pop(clave, None)
-
-                        st.rerun()
+tipo_lider = st.selectbox(
+    "👤 Tipo de liderazgo estratégico",
+    ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
+)
 # -----------------------------------------
-# 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
+# 🧾 LÍNEAS TEMÁTICAS DISPONIBLES
+# -----------------------------------------
+lineas_accion = [
+    "ABANDONO DE PERSONAS (MENOR DE EDAD, ADULTO MAYOR O CON CAPACIDADES DIFERENTES)",
+    "ABIGEATO (ROBO Y DESTACE DE GANADO)",
+    "ABORTO",
+    "ABUSO DE AUTORIDAD",
+    "ACCIDENTES DE TRANSITO",
+    "ACCIONAMIENTO DE ARMA DE FUEGO (BALACERAS)",
+    "ACOSO ESCOLAR (BULLYING)",
+    "ACOSO LABORAL (MOBBING)",
+    "ACOSO SEXUAL CALLEJERO",
+    "ACTOS OBSCENOS EN VIA PUBLICA",
+    "ADMINISTRACION FRAUDULENTA, APROPIACIONES INDEBIDAS O ENRIQUECIMIENTO ILICITO",
+    "AGRESION CON ARMAS",
+    "AGRUPACIONES DELINCUENCIALES NO ORGANIZADAS",
+    "ALTERACIÓN DE DATOS Y SABOTAJE INFORMÁTICO",
+    "AMBIENTE LABORAL INADECUADO",
+    "AMENAZAS",
+    "ANALFABETISMO",
+    "ASALTO (A PERSONAS, COMERCIO, VIVIENDA, TRANSPORTE PÚBLICO)",
+    "BAJOS SALARIOS",
+    "BARES CLANDESTINOS",
+    "BARRAS DE FUTBOL",
+    "BUNKER (VENTA Y CONSUMO DE DROGAS)",
+    "CALUMNIA",
+    "CAZA ILEGAL",
+    "CONDUCCION TEMERARIA",
+    "CONSUMO DE ALCOHOL EN VÍA PÚBLICA",
+    "CONSUMO DE DROGAS",
+    "CONTAMINACION SONICA",
+    "CONTRABANDO",
+    "CORRUPCION",
+    "CORRUPCION POLICIAL",
+    "CULTIVO DE DROGA (MARIHUANA)",
+    "DAÑO AMBIENTAL",
+    "DAÑOS/VANDALISMO",
+    "DEFICENCIA EN LA INFRAESTRUCTURA VIAL",
+    "DEFICIENCIA EN LA LINEA 9-1-1",
+    "DEFICIENCIAS EN EL ALUMBRADO PUBLICO",
+    "DELICUENCIA ORGANIZADA",
+    "DELITOS CONTRA EL AMBITO DE INTIMIDAD (VIOLACIÓN DE SECRETOS (CORRESPONDENCIA Y COMUNICACIONES ELECTRONICAS))",
+    "DELITOS CONTRA LA VIDA (HOMICIDIOS, HERIDOS)",
+    "DELITOS SEXUALES",
+    "DESAPARICION DE PERSONAS",
+    "DESARTICULACION INTERINSTITUCIONAL",
+    "DESOBEDIENCIA",
+    "DESORDENES EN VIA PUBLICA",
+    "DESVINCULACIÓN ESTUDIANTIL",
+    "DISTURBIOS (RIÑAS)",
+    "ENFRENTAMIENTOS ESTUDIANTILES",
+    "ESTAFA O DEFRAUDACION",
+    "ESTUPRO (DELITOS SEXUALES CONTRA MENOR DE EDAD)",
+    "EVASIÓN Y QUEBRANTAMIENTO DE PENA",
+    "EXPLOSIVOS",
+    "EXPLOTACIÓN LABORAL INFANTIL",
+    "EXPLOTACIÓN SEXUAL INFANTIL",
+    "EXTORSION",
+    "FABRICACIÓN, PRODUCCIÓN O REPRODUCCIÓN DE PORNOGRAFÍA",
+    "FACILISMO ECONOMICO",
+    "FALSIFICACION DE MONEDA Y OTROS VALORES.",
+    "FALTA DE CAMARAS DE SEGURIDAD",
+    "FALTA DE CAPACITACION POLICIAL",
+    "FALTA DE CONTROL A PATENTES",
+    "FALTA DE CONTROL FRONTERIZO",
+    "FALTA DE CORRESPONSABILIDAD EN SEGURIDAD",
+    "FALTA DE CULTURA VIAL",
+    "FALTA DE CULTURA Y COMPROMISO CIUDADANO",
+    "FALTA DE EDUCACION FAMILIAR",
+    "FALTA DE INCENTIVOS",
+    "FALTA DE INVERSION SOCIAL",
+    "FALTA DE LEGISLACION DE EXTINCION DE DOMINIO",
+    "FALTA DE OPORTUNIDADES LABORALES",
+    "FALTA DE PERSONAL ADMINISTRATIVO",
+    "FALTA DE PERSONAL POLICIAL",
+    "FALTA DE POLICIAS DE TRANSITO",
+    "FALTA DE POLITICAS PUBLICAS EN SEGURIDAD",
+    "FALTA DE PRESENCIA POLICIAL",
+    "FALTA DE SALUBRIDAD PUBLICA",
+    "FAMILIAS DISFUNCIONALES",
+    "FEMICIDIO",
+    "FRAUDE INFORMATICO",
+    "GROOMING",
+    "HACINAMIENTO CARCELARIO",
+    "HACINAMIENTO POLICIAL",
+    "HOMICIDIO",
+    "HOSPEDAJES ILEGALES (CUARTERIAS)",
+    "HURTO",
+    "INADECUADO USO DEL RECURSO POLICIAL",
+    "INCUMPLIMIENTO AL PLAN REGULADOR DE LA MUNICIPALIDAD",
+    "INCUMPLIMIENTO DEL  DEBER ALIMENTARIO",
+    "INDIFERENCIA SOCIAL",
+    "INEFECTIVIDAD EN EL SERVICIO DE POLICIA",
+    "INEFICIENCIA EN LA ADMINISTRACION DE JUSTICIA",
+    "INFRAESTRUCTURA INADECUADA",
+    "INTOLERANCIA SOCIAL",
+    "IRRESPETO A LA JEFATURA",
+    "IRRESPETO AL SUBALTERNO",
+    "JORNADAS LABORALES EXTENSAS",
+    "LAVADO DE ACTIVOS",
+    "LESIONES",
+    "LEY DE ARMAS Y EXPLOSIVOS N° 7530",
+    "LEY DE CONTROL DE TABACO (LEY 9028)",
+    "LOTES BALDIOS",
+    "MALTRATO ANIMAL",
+    "MENORES EN VULNERABILIDAD",
+    "MINERIA ILEGAL",
+    "NARCOTRAFICO",
+    "NECESIDADES BASICAS INSATISFECHAS",
+    "PERCEPCION DE INSEGURIDAD",
+    "PERDIDA DE ESPACIOS PUBLICOS",
+    "PERSONAS CON EXCESO DE TIEMPO DE OCIO",
+    "PERSONAS EN ESTADO MIGRATORIO IRREGULAR",
+    "PERSONAS EN SITUACION DE CALLE",
+    "PESCA ILEGAL",
+    "PORTACION ILEGAL DE ARMAS",
+    "PRESENCIA MULTICULTURAL",
+    "PRESION POR RESULTADOS OPERATIVOS",
+    "PRIVACIÓN DE LIBERTAD SIN ÁNIMO DE LUCRO",
+    "PROBLEMAS VECINALES",
+    "RECEPTACION",
+    "RELACIONES IMPROPIAS",
+    "RESISTENCIA (IRRESPETO A LA AUTORIDAD)",
+    "ROBO A COMERCIO (INTIMIDACION)",
+    "ROBO A COMERCIO (TACHA)",
+    "ROBO A EDIFICACIÓN (TACHA)",
+    "ROBO A EMBARCACIONES (TACHA)",
+    "ROBO A PERSONAS",
+    "ROBO A TRANSPORTE COMERCIAL",
+    "ROBO A TRANSPORTE PÚBLICO CON INTIMIDACIÓN",
+    "ROBO A VEHICULOS (TACHA)",
+    "ROBO A VIVIENDA (INTIMIDACION)",
+    "ROBO A VIVIENDA\n(TACHA)",
+    "ROBO DE BICICLETA",
+    "ROBO DE CABLE",
+    "ROBO DE COMBUSTIBLE",
+    "ROBO DE CULTIVOS",
+    "ROBO DE EMBARCACIONES",
+    "ROBO DE EQUIPO AGRICOLA",
+    "ROBO DE GANADO Y AGRÍCOLA",
+    "ROBO DE MOTOCICLETAS/VEHICULOS(BAJONAZO)",
+    "ROBO DE VEHICULOS",
+    "SECUESTRO",
+    "SIMULACION DE DELITO",
+    "SISTEMA JURIDICO DESACTUALIZADO",
+    "SUICIDIO",
+    "SUSTRACCION DE UNA PERSONA MENOR DE EDAD O INCAPAZ.",
+    "TALA ILEGAL",
+    "TENDENCIA SOCIAL HACIA EL DELITO (PAUTAS DE CRIANZA VIOLENTA)",
+    "TENENCIA DE DROGA",
+    "TENTATIVA DE HOMICIDIO",
+    "TERRORISMO",
+    "TRABAJO INFORMAL",
+    "TRAFICO DE ARMAS",
+    "TRAFICO DE INFLUENCIAS",
+    "TRÁFICO ILEGAL DE PERSONAS",
+    "TRANSPORTE INFORMAL (UBER, PORTEADORES, PIRATAS)",
+    "TRATA DE PERSONAS",
+    "TURBACIÓN DE ACTOS RELIGIOSOS Y PROFANACIONES",
+    "USO ILEGAL DE UNIFORMES, INSIGNIAS O DISPOSITIVOS POLICIALES",
+    "USURPACION DE TERRENOS (PRECARIOS)",
+    "VENTA DE DROGAS",
+    "VENTA Y CONSUMO DE DROGAS EN VÍA PÚBLICA",
+    "VENTAS INFORMALES (AMBULANTES)",
+    "VIGILANCIA INFORMAL",
+    "VIOLACIÓN DE DOMICILIO",
+    "VIOLACIÓN DE LA CUSTODIA DE LAS COSAS",
+    "VIOLACIÓN DE SELLOS",
+    "VIOLENCIA DE GENERO",
+    "VIOLENCIA INTRAFAMILIAR",
+    "XENOFOBIA",
+    "ZONAS DE PROSTITUCION",
+    "ZONAS VULNERABLES"
+]
+
+lineas_seleccionadas = st.multiselect("📚 Selecciona una o más líneas de acción", lineas_accion)
+
+if delegacion and tipo_lider and lineas_seleccionadas:
+    for linea in lineas_seleccionadas:
+        with st.expander(f"📄 Línea de Acción: {linea}"):
+            with st.form(key=f"form_{linea}"):
+                tipo_indicador = st.text_input("🧭 Tipo de Indicador", key=f"indicador_{linea}")
+                meta = st.text_input("🎯 Meta (puede ser texto o número)", key=f"meta_{linea}")
+                estado = st.selectbox("📈 Estado actual", ["Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
+
+                # Trimestres
+                col1, col2, col3, col4 = st.columns(4)
+                t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
+                t2 = col2.number_input("T2", min_value=0, step=1, key=f"t2_{linea}")
+                t3 = col3.number_input("T3", min_value=0, step=1, key=f"t3_{linea}")
+                t4 = col4.number_input("T4", min_value=0, step=1, key=f"t4_{linea}")
+
+                detalle = st.text_area("📝 Detalle del cumplimiento", key=f"detalle_{linea}")
+
+                submit = st.form_submit_button("💾 Guardar registro")
+
+                if submit:
+                    datos = {
+                        "delegacion": delegacion,
+                        "tipo": tipo_lider,
+                        "linea": linea,
+                        "indicador": tipo_indicador,
+                        "meta": meta,
+                        "estado": estado,
+                        "trimestre1": t1,
+                        "trimestre2": t2,
+                        "trimestre3": t3,
+                        "trimestre4": t4,
+                        "detalle": detalle,
+                        "fecha": datetime.now().isoformat()
+                    }
+                    insertar_respuesta(datos)
+                    st.success(f"✅ Registro guardado correctamente para: {linea}")
+                    st.rerun()
+# -----------------------------------------
+# 📊 VISUALIZACIÓN Y FILTROS DE RESPUESTAS
 # -----------------------------------------
 st.markdown("---")
 st.subheader("📁 Respuestas guardadas")
@@ -148,48 +299,58 @@ respuestas = obtener_respuestas()
 
 if respuestas:
     df = pd.DataFrame(respuestas)
-    df = df.sort_values(by=["delegacion", "tipo", "linea"])
 
-    # Convertir fecha al formato dd/mm/yyyy
+    # Convertir fecha
     df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
-    st.dataframe(df, use_container_width=True)
+    # Filtros
+    col1, col2, col3 = st.columns(3)
 
-    # Agrupador por delegación
-    delegaciones_disponibles = df["delegacion"].unique().tolist()
-    delegacion_filtro = st.selectbox("🔍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
+    delegaciones_disponibles = sorted(df["delegacion"].dropna().unique())
+    tipos_disponibles = sorted(df["tipo"].dropna().unique())
+    trimestres = ["Todos", "1", "2", "3", "4"]
 
-    if delegacion_filtro != "Todas":
-        df_filtrado = df[df["delegacion"] == delegacion_filtro]
-    else:
-        df_filtrado = df
+    filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
+    filtro_tipo = col2.selectbox("👤 Filtrar por tipo", ["Todos"] + tipos_disponibles)
+    filtro_trimestre = col3.selectbox("📅 Filtrar por trimestre", trimestres)
 
-    st.markdown("### 📌 Detalles por delegación")
-    for idx, fila in df_filtrado.iterrows():
-        with st.expander(f"🗂️ {fila['delegacion']} - Línea {fila['linea']} ({fila['tipo']}) [{fila['estado']}]"):
-            st.write(f"**Acción Estratégica:** {fila['accion']}")
+    df_filtrado = df.copy()
+
+    if filtro_delegacion != "Todas":
+        df_filtrado = df_filtrado[df_filtrado["delegacion"] == filtro_delegacion]
+    if filtro_tipo != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["tipo"] == filtro_tipo]
+
+    if filtro_trimestre in ["1", "2", "3", "4"]:
+        trimestre_col = f"trimestre{filtro_trimestre}"
+        df_filtrado = df_filtrado[df_filtrado[trimestre_col] > 0]
+
+    # Ordenar resultados
+    df_filtrado = df_filtrado.sort_values(by=["delegacion", "tipo", "linea"])
+
+    st.markdown("### 📌 Detalles por línea de acción")
+    for _, fila in df_filtrado.iterrows():
+        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila['estado']}]"):
             st.write(f"**Indicador:** {fila['indicador']}")
             st.write(f"**Meta:** {fila['meta']}")
-            st.write(f"**Líder Estratégico:** {fila['lider']}")
-            st.write(f"**Cogestores:** {fila['cogestores']}")
-            st.write(f"**Observación:** {fila['observacion']}")
+            st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
+            st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
+            st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
+            st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
+            st.write(f"**Detalle:** {fila.get('detalle', '')}")
             st.write(f"**Fecha:** {fila['fecha']}")
 
-            col1, col2 = st.columns(2)
-            if col1.button("✏️ Editar", key=f"editar_{fila['id']}"):
+            col_edit, col_del = st.columns(2)
+
+            if col_edit.button("✏️ Editar", key=f"editar_{fila['id']}"):
                 st.session_state["modo_edicion"] = True
                 st.session_state["respuesta_editando"] = fila.to_dict()
+                st.experimental_rerun()
 
-            if col2.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
+            if col_del.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
                 eliminar_respuesta(fila["id"])
-                st.success("🗑️ Respuesta eliminada correctamente.")
-                st.rerun()
-
-    # Botón de descarga
-    st.markdown("### 📥 Descargar todas las respuestas")
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📄 Descargar en CSV", csv, "respuestas_delegaciones.csv", "text/csv")
-
+                st.success("✅ Registro eliminado correctamente.")
+                st.experimental_rerun()
 else:
     st.info("Aún no hay respuestas registradas.")
 # -----------------------------------------
@@ -200,49 +361,99 @@ modo_edicion = st.session_state.get("modo_edicion")
 
 if modo_edicion and isinstance(respuesta_editando, dict):
     st.markdown("---")
-    st.subheader("✏️ Editar respuesta registrada")
+    st.subheader("✏️ Editar registro existente")
 
     fila = respuesta_editando
 
     with st.form("form_editar_respuesta"):
-        accion = st.radio("¿Cumple Acción Estratégica?", ["Sí", "No"], index=0 if fila["accion"] == "Sí" else 1)
-        indicador = st.radio("¿Cumple Indicador?", ["Sí", "No"], index=0 if fila["indicador"] == "Sí" else 1)
-        meta = st.radio("¿Cumple Meta?", ["Sí", "No"], index=0 if fila["meta"] == "Sí" else 1)
-        lider = st.radio("¿Líder Estratégico Asignado?", ["Sí", "No"], index=0 if fila["lider"] == "Sí" else 1)
-        cogestores = st.radio("¿Hay Cogestores Identificados?", ["Sí", "No"], index=0 if fila["cogestores"] == "Sí" else 1)
-        observacion = st.text_area("📝 Observación general", value=fila["observacion"])
+        st.write(f"🗂️ **Delegación:** {fila['delegacion']}")
+        st.write(f"👤 **Tipo de liderazgo:** {fila['tipo']}")
+        st.write(f"📚 **Línea de acción:** {fila['linea']}")
 
-        col1, col2 = st.columns(2)
-        guardar = col1.form_submit_button("💾 Guardar Cambios")
-        cancelar = col2.form_submit_button("❌ Cancelar")
+        tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
+        meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
+        estado = st.selectbox("📈 Estado", ["Completa", "Con actividades", "Sin actividades"], index=["Completa", "Con actividades", "Sin actividades"].index(fila.get("estado", "Sin actividades")))
+
+        col1, col2, col3, col4 = st.columns(4)
+        t1 = col1.number_input("T1", min_value=0, step=1, value=int(fila.get("trimestre1", 0)))
+        t2 = col2.number_input("T2", min_value=0, step=1, value=int(fila.get("trimestre2", 0)))
+        t3 = col3.number_input("T3", min_value=0, step=1, value=int(fila.get("trimestre3", 0)))
+        t4 = col4.number_input("T4", min_value=0, step=1, value=int(fila.get("trimestre4", 0)))
+
+        detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", ""))
+
+        col_guardar, col_cancelar = st.columns(2)
+        guardar = col_guardar.form_submit_button("💾 Guardar Cambios")
+        cancelar = col_cancelar.form_submit_button("❌ Cancelar")
 
         if guardar:
-            # Evaluar nuevo estado
-            if meta == "No":
-                estado = "❌ Incompleto"
-            elif accion == "Sí" and indicador == "Sí" and lider == "Sí" and cogestores == "Sí":
-                estado = "✅ Completo"
-            else:
-                estado = "🕗 Pendiente"
-
             nuevos_datos = {
-                "accion": accion,
-                "indicador": indicador,
+                "indicador": tipo_indicador,
                 "meta": meta,
-                "lider": lider,
-                "cogestores": cogestores,
-                "observacion": observacion,
                 "estado": estado,
+                "trimestre1": t1,
+                "trimestre2": t2,
+                "trimestre3": t3,
+                "trimestre4": t4,
+                "detalle": detalle,
                 "fecha": datetime.now().isoformat()
             }
-
             actualizar_respuesta(fila["id"], nuevos_datos)
-            st.success("✅ Respuesta actualizada correctamente.")
+            st.success("✅ Registro actualizado correctamente.")
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.rerun()
 
         if cancelar:
+            st.warning("❌ Edición cancelada.")
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
-            st.warning("⚠️ Edición cancelada.")
+            st.rerun()
+# -----------------------------------------
+# 📥 DESCARGA DE RESPALDO EN EXCEL (CSV)
+# -----------------------------------------
+st.markdown("---")
+st.subheader("📤 Descargar respaldo de información")
+
+if respuestas:
+    df_exportar = pd.DataFrame(respuestas)
+
+    # Asegurar columnas en orden lógico
+    columnas_ordenadas = [
+        "delegacion", "tipo", "linea", "indicador", "meta", "estado",
+        "trimestre1", "trimestre2", "trimestre3", "trimestre4",
+        "detalle", "fecha"
+    ]
+    columnas_existentes = [col for col in columnas_ordenadas if col in df_exportar.columns]
+    df_exportar = df_exportar[columnas_existentes].copy()
+
+    # Formato de fecha legible
+    df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
+
+    # Renombrar columnas para mejor presentación en Excel
+    df_exportar.rename(columns={
+        "delegacion": "Delegación",
+        "tipo": "Tipo de Liderazgo",
+        "linea": "Línea de Acción",
+        "indicador": "Tipo de Indicador",
+        "meta": "Meta",
+        "estado": "Estado",
+        "trimestre1": "Trimestre 1",
+        "trimestre2": "Trimestre 2",
+        "trimestre3": "Trimestre 3",
+        "trimestre4": "Trimestre 4",
+        "detalle": "Detalle de Cumplimiento",
+        "fecha": "Fecha de Registro"
+    }, inplace=True)
+
+    # Generar CSV
+    csv = df_exportar.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📄 Descargar en Excel (CSV)",
+        data=csv,
+        file_name="respuestas_seguimiento.csv",
+        mime="text/csv"
+    )
+else:
+    st.info("No hay información disponible para descargar.")
+
