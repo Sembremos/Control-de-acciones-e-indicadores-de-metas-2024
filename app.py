@@ -368,11 +368,12 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
         meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
-        estado = st.selectbox(
-            "📈 Estado",
-            ["Completa", "Con actividades", "Sin actividades"],
-            index=["Completa", "Con actividades", "Sin actividades"].index(fila.get("estado", "Sin actividades"))
-        )
+
+        # Corrección segura del estado
+        estado_valores = ["Completa", "Con actividades", "Sin actividades"]
+        estado_actual = fila.get("estado", "Sin actividades")
+        estado_index = estado_valores.index(estado_actual) if estado_actual in estado_valores else 2
+        estado = st.selectbox("📈 Estado", estado_valores, index=estado_index)
 
         col1, col2, col3, col4 = st.columns(4)
         t1 = col1.number_input("T1", min_value=0, step=1, value=int(fila.get("trimestre1", 0)))
@@ -382,6 +383,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", ""))
 
+        # ✅ Botones dentro del formulario (evita el error de submit button)
         col_guardar, col_cancelar = st.columns(2)
         guardar = col_guardar.form_submit_button("💾 Guardar Cambios")
         cancelar = col_cancelar.form_submit_button("❌ Cancelar")
@@ -409,6 +411,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
             st.session_state["modo_edicion"] = False
             st.session_state["respuesta_editando"] = None
             st.rerun()
+
 # -----------------------------------------
 # 📥 DESCARGA DE RESPALDO EN EXCEL (CSV)
 # -----------------------------------------
