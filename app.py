@@ -71,7 +71,15 @@ st.markdown("### ✏️ Registro por Delegación y Líder Estratégico")
 delegacion = st.selectbox("📍 Selecciona una delegación", delegaciones)
 
 # -----------------------------------------
-# 🧾 LÍNEAS TEMÁTICAS DISPONIBLES
+# 🧭 Tipo de liderazgo (una sola opción)
+# -----------------------------------------
+tipo_lider = st.selectbox(
+    "👤 Tipo de liderazgo estratégico",
+    ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
+)
+
+# -----------------------------------------
+# 📚 Selección de líneas temáticas
 # -----------------------------------------
 lineas_accion = [
     "ABANDONO DE PERSONAS (MENOR DE EDAD, ADULTO MAYOR O CON CAPACIDADES DIFERENTES)",
@@ -246,15 +254,9 @@ lineas_accion = [
     "ZONAS VULNERABLES"
 ]
 
-# 👉 CAMBIO AQUÍ: multiselección de tipo de liderazgo
-tipos_liderazgo = st.multiselect(
-    "👤 Tipo de liderazgo estratégico",
-    ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
-)
-
 lineas_seleccionadas = st.multiselect("📚 Selecciona una o más líneas de acción", lineas_accion)
 
-if delegacion and tipos_liderazgo and lineas_seleccionadas:
+if delegacion and tipo_lider and lineas_seleccionadas:
     for linea in lineas_seleccionadas:
         with st.expander(f"📄 Línea de Acción: {linea}"):
             with st.form(key=f"form_{linea}"):
@@ -263,35 +265,34 @@ if delegacion and tipos_liderazgo and lineas_seleccionadas:
                 estado = st.selectbox("📈 Estado actual", ["Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
 
                 col1, col2, col3, col4 = st.columns(4)
-                t1 = col1.number_input("T1", 0, step=1, key=f"t1_{linea}")
-                t2 = col2.number_input("T2", 0, step=1, key=f"t2_{linea}")
-                t3 = col3.number_input("T3", 0, step=1, key=f"t3_{linea}")
-                t4 = col4.number_input("T4", 0, step=1, key=f"t4_{linea}")
+                t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
+                t2 = col2.number_input("T2", min_value=0, step=1, key=f"t2_{linea}")
+                t3 = col3.number_input("T3", min_value=0, step=1, key=f"t3_{linea}")
+                t4 = col4.number_input("T4", min_value=0, step=1, key=f"t4_{linea}")
 
                 detalle = st.text_area("📝 Detalle del cumplimiento", key=f"detalle_{linea}")
 
                 submit = st.form_submit_button("💾 Guardar registro")
 
                 if submit:
-                    for tipo in tipos_liderazgo:
-                        datos = {
-                            "delegacion": delegacion,
-                            "tipo": tipo,
-                            "linea": linea,
-                            "indicador": tipo_indicador,
-                            "meta": meta,
-                            "estado": estado,
-                            "trimestre1": t1,
-                            "trimestre2": t2,
-                            "trimestre3": t3,
-                            "trimestre4": t4,
-                            "detalle": detalle,
-                            "fecha": datetime.now().isoformat()
-                        }
-                        insertar_respuesta(datos)
-
-                    st.success(f"✅ Registro guardado para '{linea}' en {len(tipos_liderazgo)} tipo(s)")
+                    datos = {
+                        "delegacion": delegacion,
+                        "tipo": tipo_lider,
+                        "linea": linea,
+                        "indicador": tipo_indicador,
+                        "meta": meta,
+                        "estado": estado,
+                        "trimestre1": t1,
+                        "trimestre2": t2,
+                        "trimestre3": t3,
+                        "trimestre4": t4,
+                        "detalle": detalle,
+                        "fecha": datetime.now().isoformat()
+                    }
+                    insertar_respuesta(datos)
+                    st.success(f"✅ Registro guardado para: {linea}")
                     st.rerun()
+
 
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y FILTROS DE RESPUESTAS
