@@ -70,10 +70,6 @@ if "respuesta_editando" not in st.session_state:
 st.markdown("### ✏️ Registro por Delegación y Líder Estratégico")
 delegacion = st.selectbox("📍 Selecciona una delegación", delegaciones)
 
-tipo_lider = st.selectbox(
-    "👤 Tipo de liderazgo estratégico",
-    ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
-)
 # -----------------------------------------
 # 🧾 LÍNEAS TEMÁTICAS DISPONIBLES
 # -----------------------------------------
