@@ -15,7 +15,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # 🧱 FUNCIONES BASE DE DATOS
 # -----------------------------------------
 def insertar_respuesta(data: dict):
-    return supabase.table("respuestas").insert(data).execute()
+    try:
+        return supabase.table("respuestas").insert(data).execute()
+    except Exception as e:
+        st.error("❌ Error al guardar los datos en Supabase.")
+        st.exception(e)
+        return None
 
 def obtener_respuestas():
     response = supabase.table("respuestas").select("*").execute()
@@ -58,12 +63,11 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Inicializar variables de sesión para edición
+# Inicializar variables de sesión
 if "modo_edicion" not in st.session_state:
     st.session_state["modo_edicion"] = False
 if "respuesta_editando" not in st.session_state:
     st.session_state["respuesta_editando"] = None
-
 # -----------------------------------------
 # 📝 SELECCIÓN DE DELEGACIÓN Y TIPO
 # -----------------------------------------
@@ -75,6 +79,7 @@ tipo_lider = st.selectbox(
     "👤 Tipo de liderazgo estratégico",
     ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
 )
+
 # -----------------------------------------
 # 📚 Selección de líneas temáticas
 # -----------------------------------------
@@ -259,7 +264,7 @@ if delegacion and tipo_lider and lineas_seleccionadas:
             with st.form(key=f"form_{linea}"):
                 tipo_indicador = st.text_input("🧭 Tipo de Indicador", key=f"indicador_{linea}")
                 meta = st.text_input("🎯 Meta (puede ser texto o número)", key=f"meta_{linea}")
-                estado = st.selectbox("📈 Estado actual", ["Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
+                estado = st.selectbox("📈 Estado actual", ["", "Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
 
                 col1, col2, col3, col4 = st.columns(4)
                 t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
@@ -272,22 +277,25 @@ if delegacion and tipo_lider and lineas_seleccionadas:
                 submit = st.form_submit_button("💾 Guardar registro")
 
                 if submit:
-                    datos = {
-                        "delegacion": delegacion,
-                        "tipo": tipo_lider,
-                        "linea": linea,
-                        "indicador": tipo_indicador,
-                        "meta": meta,
-                        "estado": estado,
-                        "trimestre1": t1,
-                        "trimestre2": t2,
-                        "trimestre3": t3,
-                        "trimestre4": t4,
-                        "detalle": detalle
-                    }
-                    insertar_respuesta(datos)
-                    st.success(f"✅ Registro guardado para: {linea}")
-                    st.rerun()
+                    if not delegacion or not tipo_lider or not linea:
+                        st.error("❌ Los campos 'Delegación', 'Tipo de Liderazgo' y 'Línea' son obligatorios.")
+                    else:
+                        datos = {
+                            "delegacion": delegacion,
+                            "tipo": tipo_lider,
+                            "linea": linea,
+                            "indicador": tipo_indicador if tipo_indicador else None,
+                            "meta": meta if meta else None,
+                            "estado": estado if estado else None,
+                            "trimestre1": t1,
+                            "trimestre2": t2,
+                            "trimestre3": t3,
+                            "trimestre4": t4,
+                            "detalle": detalle if detalle else None
+                        }
+                        insertar_respuesta(datos)
+                        st.success(f"✅ Registro guardado para: {linea}")
+                        st.rerun()
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y FILTROS DE RESPUESTAS
 # -----------------------------------------
@@ -299,8 +307,9 @@ respuestas = obtener_respuestas()
 if respuestas:
     df = pd.DataFrame(respuestas)
 
-    # Convertir fecha al formato legible
-    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
+    # Convertir la fecha a formato legible
+    if "fecha" in df.columns:
+        df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
     # Filtros dinámicos
     col1, col2, col3 = st.columns(3)
@@ -327,7 +336,7 @@ if respuestas:
     st.markdown("### 📌 Detalles por línea de acción")
 
     for _, fila in df_filtrado.iterrows():
-        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila['estado']}]"):
+        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', 'Sin estado')}]"):
             st.write(f"**Tipo de Indicador:** {fila.get('indicador', '')}")
             st.write(f"**Meta:** {fila.get('meta', '')}")
             st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
@@ -369,11 +378,10 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
         meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
 
-        # Manejo seguro del valor de estado
-        estado_valores = ["Completa", "Con actividades", "Sin actividades"]
-        estado_actual = fila.get("estado", "Sin actividades")
-        estado_index = estado_valores.index(estado_actual) if estado_actual in estado_valores else 2
-        estado = st.selectbox("📈 Estado", estado_valores, index=estado_index)
+        estado_opciones = ["Completa", "Con actividades", "Sin actividades"]
+        estado_actual = fila.get("estado", "")
+        estado_index = estado_opciones.index(estado_actual) if estado_actual in estado_opciones else 0
+        estado = st.selectbox("📈 Estado", [""] + estado_opciones, index=estado_index + 1 if estado_actual in estado_opciones else 0)
 
         col1, col2, col3, col4 = st.columns(4)
         t1 = col1.number_input("T1", min_value=0, step=1, value=int(fila.get("trimestre1", 0)))
@@ -389,14 +397,14 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         if guardar:
             nuevos_datos = {
-                "indicador": tipo_indicador,
-                "meta": meta,
-                "estado": estado,
+                "indicador": tipo_indicador if tipo_indicador else None,
+                "meta": meta if meta else None,
+                "estado": estado if estado else None,
                 "trimestre1": t1,
                 "trimestre2": t2,
                 "trimestre3": t3,
                 "trimestre4": t4,
-                "detalle": detalle
+                "detalle": detalle if detalle else None
             }
             actualizar_respuesta(fila["id"], nuevos_datos)
             st.success("✅ Registro actualizado correctamente.")
@@ -428,9 +436,10 @@ if respuestas:
     df_exportar = df_exportar[columnas_existentes].copy()
 
     # Formato legible de fecha
-    df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
+    if "fecha" in df_exportar.columns:
+        df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar para que quede bonito en Excel
+    # Renombrar columnas para mejor presentación en Excel
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
@@ -458,4 +467,5 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
+
 
