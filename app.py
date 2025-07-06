@@ -76,7 +76,7 @@ st.markdown("### ✏️ Registro de líneas de acción estratégicas")
 delegacion = st.selectbox("📍 Selecciona una delegación", delegaciones)
 
 tipo_lider = st.selectbox(
-    "👤 Tipo de liderazgo estratégico",
+    "👤 Líder estratégico",
     ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
 )
 
@@ -319,7 +319,7 @@ if respuestas:
     trimestres = ["Todos", "1", "2", "3", "4"]
 
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
-    filtro_tipo = col2.selectbox("👤 Filtrar por tipo de liderazgo", ["Todos"] + tipos_disponibles)
+    filtro_tipo = col2.selectbox("👤 Filtrar por líder estratégico", ["Todos"] + tipos_disponibles)
     filtro_trimestre = col3.selectbox("📅 Filtrar por trimestre", trimestres)
 
     df_filtrado = df.copy()
