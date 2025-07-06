@@ -63,13 +63,13 @@ delegaciones = sorted([
     'D96 - Corredores', 'D97 - Puerto Jiménez'
 ])
 
-# Inicializar variables de sesión
+# Inicializar estado de edición
 if "modo_edicion" not in st.session_state:
     st.session_state["modo_edicion"] = False
 if "respuesta_editando" not in st.session_state:
     st.session_state["respuesta_editando"] = None
 # -----------------------------------------
-# 📝 SELECCIÓN DE DELEGACIÓN Y TIPO
+# 📝 REGISTRO DE LÍNEAS DE ACCIÓN
 # -----------------------------------------
 st.markdown("### ✏️ Registro de líneas de acción estratégicas")
 
@@ -80,9 +80,7 @@ tipo_lider = st.selectbox(
     ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
 )
 
-# -----------------------------------------
-# 📚 Selección de líneas temáticas
-# -----------------------------------------
+# Lista COMPLETA de líneas de acción
 lineas_accion = [
     "ABANDONO DE PERSONAS (MENOR DE EDAD, ADULTO MAYOR O CON CAPACIDADES DIFERENTES)",
     "ABIGEATO (ROBO Y DESTACE DE GANADO)",
@@ -264,7 +262,12 @@ if delegacion and tipo_lider and lineas_seleccionadas:
             with st.form(key=f"form_{linea}"):
                 tipo_indicador = st.text_input("🧭 Tipo de Indicador", key=f"indicador_{linea}")
                 meta = st.text_input("🎯 Meta (puede ser texto o número)", key=f"meta_{linea}")
-                estado = st.selectbox("📈 Estado actual", ["", "Completa", "Con actividades", "Sin actividades"], key=f"estado_{linea}")
+                estado = st.selectbox(
+                    "📈 Estado actual",
+                    ["", "Completa", "Con actividades", "Sin actividades"],
+                    index=0,
+                    key=f"estado_{linea}"
+                )
 
                 col1, col2, col3, col4 = st.columns(4)
                 t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
@@ -277,27 +280,25 @@ if delegacion and tipo_lider and lineas_seleccionadas:
                 submit = st.form_submit_button("💾 Guardar registro")
 
                 if submit:
-                    if not delegacion or not tipo_lider or not linea:
-                        st.error("❌ Los campos 'Delegación', 'Tipo de Liderazgo' y 'Línea' son obligatorios.")
-                    else:
-                        datos = {
-                            "delegacion": delegacion,
-                            "tipo": tipo_lider,
-                            "linea": linea,
-                            "indicador": tipo_indicador if tipo_indicador else None,
-                            "meta": meta if meta else None,
-                            "estado": estado if estado else None,
-                            "trimestre1": t1,
-                            "trimestre2": t2,
-                            "trimestre3": t3,
-                            "trimestre4": t4,
-                            "detalle": detalle if detalle else None
-                        }
-                        insertar_respuesta(datos)
+                    datos = {
+                        "delegacion": delegacion,
+                        "tipo": tipo_lider,
+                        "linea": linea,
+                        "indicador": tipo_indicador or None,
+                        "meta": meta or None,
+                        "estado": estado or None,
+                        "trimestre1": t1,
+                        "trimestre2": t2,
+                        "trimestre3": t3,
+                        "trimestre4": t4,
+                        "detalle": detalle or None
+                    }
+                    respuesta = insertar_respuesta(datos)
+                    if respuesta:
                         st.success(f"✅ Registro guardado para: {linea}")
                         st.rerun()
 # -----------------------------------------
-# 📊 VISUALIZACIÓN Y FILTROS DE RESPUESTAS
+# 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
 # -----------------------------------------
 st.markdown("---")
 st.subheader("📁 Respuestas guardadas")
@@ -307,9 +308,8 @@ respuestas = obtener_respuestas()
 if respuestas:
     df = pd.DataFrame(respuestas)
 
-    # Convertir la fecha a formato legible
-    if "fecha" in df.columns:
-        df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
+    # Asegurarse de que la fecha esté bien formateada
+    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
     # Filtros dinámicos
     col1, col2, col3 = st.columns(3)
@@ -322,8 +322,8 @@ if respuestas:
     filtro_tipo = col2.selectbox("👤 Filtrar por tipo de liderazgo", ["Todos"] + tipos_disponibles)
     filtro_trimestre = col3.selectbox("📅 Filtrar por trimestre", trimestres)
 
-    # Aplicar filtros
     df_filtrado = df.copy()
+
     if filtro_delegacion != "Todas":
         df_filtrado = df_filtrado[df_filtrado["delegacion"] == filtro_delegacion]
     if filtro_tipo != "Todos":
@@ -336,7 +336,7 @@ if respuestas:
     st.markdown("### 📌 Detalles por línea de acción")
 
     for _, fila in df_filtrado.iterrows():
-        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', 'Sin estado')}]"):
+        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', '')}]"):
             st.write(f"**Tipo de Indicador:** {fila.get('indicador', '')}")
             st.write(f"**Meta:** {fila.get('meta', '')}")
             st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
@@ -375,8 +375,8 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         st.write(f"👤 **Tipo de liderazgo:** {fila['tipo']}")
         st.write(f"📚 **Línea de acción:** {fila['linea']}")
 
-        tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", ""))
-        meta = st.text_input("🎯 Meta", value=fila.get("meta", ""))
+        tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", "") or "")
+        meta = st.text_input("🎯 Meta", value=fila.get("meta", "") or "")
 
         estado_opciones = ["Completa", "Con actividades", "Sin actividades"]
         estado_actual = fila.get("estado", "")
@@ -389,7 +389,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         t3 = col3.number_input("T3", min_value=0, step=1, value=int(fila.get("trimestre3", 0)))
         t4 = col4.number_input("T4", min_value=0, step=1, value=int(fila.get("trimestre4", 0)))
 
-        detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", ""))
+        detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", "") or "")
 
         col_guardar, col_cancelar = st.columns(2)
         guardar = col_guardar.form_submit_button("💾 Guardar Cambios")
@@ -397,14 +397,14 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         if guardar:
             nuevos_datos = {
-                "indicador": tipo_indicador if tipo_indicador else None,
-                "meta": meta if meta else None,
-                "estado": estado if estado else None,
+                "indicador": tipo_indicador or None,
+                "meta": meta or None,
+                "estado": estado or None,
                 "trimestre1": t1,
                 "trimestre2": t2,
                 "trimestre3": t3,
                 "trimestre4": t4,
-                "detalle": detalle if detalle else None
+                "detalle": detalle or None
             }
             actualizar_respuesta(fila["id"], nuevos_datos)
             st.success("✅ Registro actualizado correctamente.")
@@ -435,11 +435,11 @@ if respuestas:
     columnas_existentes = [col for col in columnas_ordenadas if col in df_exportar.columns]
     df_exportar = df_exportar[columnas_existentes].copy()
 
-    # Formato legible de fecha
+    # Formato legible para la fecha
     if "fecha" in df_exportar.columns:
         df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar columnas para mejor presentación en Excel
+    # Renombrar columnas para presentación en Excel
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
@@ -455,7 +455,7 @@ if respuestas:
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Crear el archivo CSV
+    # Generar archivo CSV
     csv = df_exportar.to_csv(index=False).encode("utf-8")
 
     # Botón de descarga
@@ -467,5 +467,6 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
+
 
 
