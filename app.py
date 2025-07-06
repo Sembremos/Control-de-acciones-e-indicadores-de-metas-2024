@@ -455,8 +455,9 @@ if respuestas:
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Generar archivo CSV
-    csv = df_exportar.to_csv(index=False).encode("utf-8")
+    # Crear archivo CSV compatible con Excel (UTF-8 con BOM)
+    csv = '\ufeff' + df_exportar.to_csv(index=False)
+    csv = csv.encode("utf-8-sig")
 
     # Botón de descarga
     st.download_button(
@@ -467,6 +468,7 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
+
 
 
 
