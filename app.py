@@ -325,7 +325,7 @@ if respuestas:
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
     filtro_tipo = col2.selectbox("👤 Filtrar por líder estratégico", ["Todos"] + tipos_disponibles)
     filtro_estado = col3.selectbox("📈 Filtrar por estado", ["Todos"] + estados_disponibles)
-    filtro_linea = col4.selectbox("📚 Filtrar por problemática", ["Todas"] + lineas_disponibles)
+    filtro_linea = col4.selectbox("📚 Filtrar por línea de acción", ["Todas"] + lineas_disponibles)
 
     df_filtrado = df.copy()
     if filtro_delegacion != "Todas":
@@ -339,43 +339,35 @@ if respuestas:
 
     df_filtrado = df_filtrado.sort_values(by=["delegacion", "tipo", "linea"])
 
-    # 🔄 Nuevo título
     st.markdown("### 📌 Detalles por indicador")
 
-    color_estado = {
-        "Sin actividades": "🔴",
-        "Con actividades": "🟠",
-        "Completa": "🟢"
-    }
+    if not df_filtrado.empty:
+        def resaltar_estado(val):
+            color = ''
+            if val == 'Sin actividades':
+                color = 'background-color: #ffcccc'
+            elif val == 'Con actividades':
+                color = 'background-color: #fff5cc'
+            elif val == 'Completa':
+                color = 'background-color: #ccffcc'
+            return color
 
-    for _, fila in df_filtrado.iterrows():
-        estado_icono = color_estado.get(fila.get("estado", ""), "")
-        with st.expander(f"{estado_icono} {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', '')}]"):
-            st.write(f"**Descripción del Indicador:** {fila.get('indicador', '')}")
-            st.write(f"**Meta:** {fila.get('meta', '')}")
-            st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
-            st.write(f"**Resultado T1:** {fila.get('obs1', '')}")
-            st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
-            st.write(f"**Resultado T2:** {fila.get('obs2', '')}")
-            st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
-            st.write(f"**Resultado T3:** {fila.get('obs3', '')}")
-            st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
-            st.write(f"**Resultado T4:** {fila.get('obs4', '')}")
-            st.write(f"**Observaciones generales:** {fila.get('detalle', '')}")
-            st.write(f"**Fecha:** {fila.get('fecha', '')}")
+        columnas_tabla = [
+            "delegacion", "tipo", "linea", "indicador", "meta", "estado",
+            "trimestre1", "obs1", "trimestre2", "obs2",
+            "trimestre3", "obs3", "trimestre4", "obs4",
+            "detalle", "fecha"
+        ]
+        columnas_existentes = [col for col in columnas_tabla if col in df_filtrado.columns]
+        df_tabla = df_filtrado[columnas_existentes].copy()
+        df_tabla_estilado = df_tabla.style.applymap(resaltar_estado, subset=["estado"])
 
-            col_edit, col_del = st.columns(2)
-            if col_edit.button("✏️ Editar", key=f"editar_{fila['id']}"):
-                st.session_state["modo_edicion"] = True
-                st.session_state["respuesta_editando"] = fila.to_dict()
-                st.rerun()
-
-            if col_del.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
-                eliminar_respuesta(fila["id"])
-                st.success("✅ Registro eliminado correctamente.")
-                st.rerun()
+        st.dataframe(df_tabla_estilado, use_container_width=True)
+    else:
+        st.info("No hay resultados con los filtros aplicados.")
 else:
     st.info("Aún no hay respuestas registradas.")
+
 
 # -----------------------------------------
 # ✏️ MODO EDICIÓN DE RESPUESTA
@@ -451,26 +443,21 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 st.markdown("---")
 st.subheader("📤 Descargar respaldo de información")
 
-if respuestas:
-    df_exportar = pd.DataFrame(respuestas)
+if not df_filtrado.empty:
+    df_exportar = df_filtrado.copy()
 
-    # Orden lógico de columnas
     columnas_ordenadas = [
         "delegacion", "tipo", "linea", "indicador", "meta", "estado",
-        "trimestre1", "obs1",
-        "trimestre2", "obs2",
-        "trimestre3", "obs3",
-        "trimestre4", "obs4",
+        "trimestre1", "obs1", "trimestre2", "obs2",
+        "trimestre3", "obs3", "trimestre4", "obs4",
         "detalle", "fecha"
     ]
     columnas_existentes = [col for col in columnas_ordenadas if col in df_exportar.columns]
     df_exportar = df_exportar[columnas_existentes].copy()
 
-    # Formatear fecha si existe
     if "fecha" in df_exportar.columns:
         df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar columnas para presentación
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
@@ -479,18 +466,17 @@ if respuestas:
         "meta": "Meta",
         "estado": "Estado",
         "trimestre1": "Trimestre 1",
-        "obs1": "ResultadoT1",
+        "obs1": "Observación T1",
         "trimestre2": "Trimestre 2",
-        "obs2": "Resultado T2",
+        "obs2": "Observación T2",
         "trimestre3": "Trimestre 3",
-        "obs3": "Resultado T3",
+        "obs3": "Observación T3",
         "trimestre4": "Trimestre 4",
-        "obs4": "Resultado T4",
+        "obs4": "Observación T4",
         "detalle": "Observaciones Generales",
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Convertir a CSV con codificación UTF-8 BOM
     csv = '\ufeff' + df_exportar.to_csv(index=False, sep=';')
     csv = csv.encode("utf-8-sig")
 
@@ -501,7 +487,7 @@ if respuestas:
         mime="text/csv"
     )
 else:
-    st.info("No hay información disponible para descargar.")
+    st.info("No hay datos filtrados para exportar.")
 
 
 
