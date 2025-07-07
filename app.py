@@ -80,7 +80,7 @@ tipo_lider = st.selectbox(
     ["Fuerza Pública", "Gobierno Local", "Fuerza Pública y Gobierno Local"]
 )
 
-# Lista COMPLETA de líneas de acción
+# Lista completa de líneas de acción (puedes dividirla en archivo externo si deseas)
 lineas_accion = [
     "ABANDONO DE PERSONAS (MENOR DE EDAD, ADULTO MAYOR O CON CAPACIDADES DIFERENTES)",
     "ABIGEATO (ROBO Y DESTACE DE GANADO)",
@@ -257,46 +257,49 @@ lineas_accion = [
 lineas_seleccionadas = st.multiselect("📚 Selecciona una o más líneas de acción", lineas_accion)
 
 if delegacion and tipo_lider and lineas_seleccionadas:
-    for linea in lineas_seleccionadas:
-        with st.expander(f"📄 Línea de Acción: {linea}"):
-            with st.form(key=f"form_{linea}"):
-                tipo_indicador = st.text_input("🧭 Tipo de Indicador", key=f"indicador_{linea}")
-                meta = st.text_input("🎯 Meta (puede ser texto o número)", key=f"meta_{linea}")
-                estado = st.selectbox(
-                    "📈 Estado actual",
-                    ["", "Completa", "Con actividades", "Sin actividades"],
-                    index=0,
-                    key=f"estado_{linea}"
-                )
+    with st.form("form_lineas_accion"):
+        descripcion = st.text_input("📌 Descripción del Indicador")
+        meta = st.text_input("🎯 Meta (texto o número)")
+        estado = st.selectbox("📈 Estado actual", ["", "Completa", "Con actividades", "Sin actividades"])
 
-                col1, col2, col3, col4 = st.columns(4)
-                t1 = col1.number_input("T1", min_value=0, step=1, key=f"t1_{linea}")
-                t2 = col2.number_input("T2", min_value=0, step=1, key=f"t2_{linea}")
-                t3 = col3.number_input("T3", min_value=0, step=1, key=f"t3_{linea}")
-                t4 = col4.number_input("T4", min_value=0, step=1, key=f"t4_{linea}")
+        col1, col2, col3, col4 = st.columns(4)
+        t1 = col1.number_input("T1", min_value=0, step=1)
+        t2 = col2.number_input("T2", min_value=0, step=1)
+        t3 = col3.number_input("T3", min_value=0, step=1)
+        t4 = col4.number_input("T4", min_value=0, step=1)
 
-                detalle = st.text_area("📝 Detalle del cumplimiento", key=f"detalle_{linea}")
+        obs1 = st.text_input("📝 Observación T1")
+        obs2 = st.text_input("📝 Observación T2")
+        obs3 = st.text_input("📝 Observación T3")
+        obs4 = st.text_input("📝 Observación T4")
 
-                submit = st.form_submit_button("💾 Guardar registro")
+        detalle = st.text_area("🗒️ Observaciones generales")
 
-                if submit:
-                    datos = {
-                        "delegacion": delegacion,
-                        "tipo": tipo_lider,
-                        "linea": linea,
-                        "indicador": tipo_indicador or None,
-                        "meta": meta or None,
-                        "estado": estado or None,
-                        "trimestre1": t1,
-                        "trimestre2": t2,
-                        "trimestre3": t3,
-                        "trimestre4": t4,
-                        "detalle": detalle or None
-                    }
-                    respuesta = insertar_respuesta(datos)
-                    if respuesta:
-                        st.success(f"✅ Registro guardado para: {linea}")
-                        st.rerun()
+        submit = st.form_submit_button("💾 Guardar registro")
+
+        if submit:
+            for linea in lineas_seleccionadas:
+                datos = {
+                    "delegacion": delegacion,
+                    "tipo": tipo_lider,
+                    "linea": linea,
+                    "indicador": descripcion or None,
+                    "meta": meta or None,
+                    "estado": estado or None,
+                    "trimestre1": t1,
+                    "trimestre2": t2,
+                    "trimestre3": t3,
+                    "trimestre4": t4,
+                    "obs1": obs1 or None,
+                    "obs2": obs2 or None,
+                    "obs3": obs3 or None,
+                    "obs4": obs4 or None,
+                    "detalle": detalle or None,
+                    "fecha": datetime.now().isoformat()
+                }
+                insertar_respuesta(datos)
+            st.success("✅ Registro(s) guardado(s) correctamente.")
+            st.rerun()
 # -----------------------------------------
 # 📊 VISUALIZACIÓN Y GESTIÓN DE RESPUESTAS
 # -----------------------------------------
@@ -308,42 +311,51 @@ respuestas = obtener_respuestas()
 if respuestas:
     df = pd.DataFrame(respuestas)
 
-    # Asegurarse de que la fecha esté bien formateada
-    df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
+    if "fecha" in df.columns:
+        df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Filtros dinámicos
+    # Filtros
     col1, col2, col3 = st.columns(3)
-
     delegaciones_disponibles = sorted(df["delegacion"].dropna().unique())
     tipos_disponibles = sorted(df["tipo"].dropna().unique())
-    trimestres = ["Todos", "1", "2", "3", "4"]
+    estados_disponibles = ["Sin actividades", "Con actividades", "Completa"]
 
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
     filtro_tipo = col2.selectbox("👤 Filtrar por líder estratégico", ["Todos"] + tipos_disponibles)
-    filtro_trimestre = col3.selectbox("📅 Filtrar por trimestre", trimestres)
+    filtro_estado = col3.selectbox("📈 Filtrar por estado", ["Todos"] + estados_disponibles)
 
     df_filtrado = df.copy()
-
     if filtro_delegacion != "Todas":
         df_filtrado = df_filtrado[df_filtrado["delegacion"] == filtro_delegacion]
     if filtro_tipo != "Todos":
         df_filtrado = df_filtrado[df_filtrado["tipo"] == filtro_tipo]
-    if filtro_trimestre in ["1", "2", "3", "4"]:
-        df_filtrado = df_filtrado[df_filtrado[f"trimestre{filtro_trimestre}"] > 0]
+    if filtro_estado != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["estado"] == filtro_estado]
 
     df_filtrado = df_filtrado.sort_values(by=["delegacion", "tipo", "linea"])
 
     st.markdown("### 📌 Detalles por línea de acción")
 
+    color_estado = {
+        "Sin actividades": "🔴",
+        "Con actividades": "🟠",
+        "Completa": "🟢"
+    }
+
     for _, fila in df_filtrado.iterrows():
-        with st.expander(f"🗂️ {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', '')}]"):
-            st.write(f"**Tipo de Indicador:** {fila.get('indicador', '')}")
+        estado_icono = color_estado.get(fila.get("estado", ""), "")
+        with st.expander(f"{estado_icono} {fila['delegacion']} - {fila['linea']} ({fila['tipo']}) [{fila.get('estado', '')}]"):
+            st.write(f"**Descripción del Indicador:** {fila.get('indicador', '')}")
             st.write(f"**Meta:** {fila.get('meta', '')}")
             st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
+            st.write(f"**Observación T1:** {fila.get('obs1', '')}")
             st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
+            st.write(f"**Observación T2:** {fila.get('obs2', '')}")
             st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
+            st.write(f"**Observación T3:** {fila.get('obs3', '')}")
             st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
-            st.write(f"**Detalle:** {fila.get('detalle', '')}")
+            st.write(f"**Observación T4:** {fila.get('obs4', '')}")
+            st.write(f"**Observaciones generales:** {fila.get('detalle', '')}")
             st.write(f"**Fecha:** {fila.get('fecha', '')}")
 
             col_edit, col_del = st.columns(2)
@@ -375,7 +387,7 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         st.write(f"👤 **Tipo de liderazgo:** {fila['tipo']}")
         st.write(f"📚 **Línea de acción:** {fila['linea']}")
 
-        tipo_indicador = st.text_input("🧭 Tipo de Indicador", value=fila.get("indicador", "") or "")
+        descripcion = st.text_input("📌 Descripción del Indicador", value=fila.get("indicador", "") or "")
         meta = st.text_input("🎯 Meta", value=fila.get("meta", "") or "")
 
         estado_opciones = ["Completa", "Con actividades", "Sin actividades"]
@@ -389,7 +401,12 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         t3 = col3.number_input("T3", min_value=0, step=1, value=int(fila.get("trimestre3", 0)))
         t4 = col4.number_input("T4", min_value=0, step=1, value=int(fila.get("trimestre4", 0)))
 
-        detalle = st.text_area("📝 Detalle del cumplimiento", value=fila.get("detalle", "") or "")
+        obs1 = st.text_input("📝 Observación T1", value=fila.get("obs1", "") or "")
+        obs2 = st.text_input("📝 Observación T2", value=fila.get("obs2", "") or "")
+        obs3 = st.text_input("📝 Observación T3", value=fila.get("obs3", "") or "")
+        obs4 = st.text_input("📝 Observación T4", value=fila.get("obs4", "") or "")
+
+        detalle = st.text_area("🗒️ Observaciones generales", value=fila.get("detalle", "") or "")
 
         col_guardar, col_cancelar = st.columns(2)
         guardar = col_guardar.form_submit_button("💾 Guardar Cambios")
@@ -397,13 +414,17 @@ if modo_edicion and isinstance(respuesta_editando, dict):
 
         if guardar:
             nuevos_datos = {
-                "indicador": tipo_indicador or None,
+                "indicador": descripcion or None,
                 "meta": meta or None,
                 "estado": estado or None,
                 "trimestre1": t1,
                 "trimestre2": t2,
                 "trimestre3": t3,
                 "trimestre4": t4,
+                "obs1": obs1 or None,
+                "obs2": obs2 or None,
+                "obs3": obs3 or None,
+                "obs4": obs4 or None,
                 "detalle": detalle or None
             }
             actualizar_respuesta(fila["id"], nuevos_datos)
@@ -426,40 +447,46 @@ st.subheader("📤 Descargar respaldo de información")
 if respuestas:
     df_exportar = pd.DataFrame(respuestas)
 
-    # Orden lógico de columnas esperadas
+    # Orden lógico de columnas
     columnas_ordenadas = [
         "delegacion", "tipo", "linea", "indicador", "meta", "estado",
-        "trimestre1", "trimestre2", "trimestre3", "trimestre4",
+        "trimestre1", "obs1",
+        "trimestre2", "obs2",
+        "trimestre3", "obs3",
+        "trimestre4", "obs4",
         "detalle", "fecha"
     ]
     columnas_existentes = [col for col in columnas_ordenadas if col in df_exportar.columns]
     df_exportar = df_exportar[columnas_existentes].copy()
 
-    # Formato legible para la fecha
+    # Formatear fecha si existe
     if "fecha" in df_exportar.columns:
         df_exportar["fecha"] = pd.to_datetime(df_exportar["fecha"]).dt.strftime("%d/%m/%Y")
 
-    # Renombrar columnas para presentación en Excel
+    # Renombrar columnas para presentación
     df_exportar.rename(columns={
         "delegacion": "Delegación",
         "tipo": "Tipo de Liderazgo",
         "linea": "Línea de Acción",
-        "indicador": "Tipo de Indicador",
+        "indicador": "Descripción del Indicador",
         "meta": "Meta",
         "estado": "Estado",
         "trimestre1": "Trimestre 1",
+        "obs1": "Observación T1",
         "trimestre2": "Trimestre 2",
+        "obs2": "Observación T2",
         "trimestre3": "Trimestre 3",
+        "obs3": "Observación T3",
         "trimestre4": "Trimestre 4",
-        "detalle": "Detalle del Cumplimiento",
+        "obs4": "Observación T4",
+        "detalle": "Observaciones Generales",
         "fecha": "Fecha de Registro"
     }, inplace=True)
 
-    # Crear archivo CSV con punto y coma y codificación UTF-8 con BOM
+    # Convertir a CSV con codificación UTF-8 BOM
     csv = '\ufeff' + df_exportar.to_csv(index=False, sep=';')
     csv = csv.encode("utf-8-sig")
 
-    # Botón de descarga
     st.download_button(
         label="📄 Descargar en Excel (CSV)",
         data=csv,
@@ -468,6 +495,7 @@ if respuestas:
     )
 else:
     st.info("No hay información disponible para descargar.")
+
 
 
 
