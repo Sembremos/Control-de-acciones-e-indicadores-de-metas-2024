@@ -342,27 +342,43 @@ if respuestas:
     st.markdown("### 📌 Detalles por indicador")
 
     if not df_filtrado.empty:
-        def resaltar_estado(val):
-            color = ''
-            if val == 'Sin actividades':
-                color = 'background-color: #ffcccc'
-            elif val == 'Con actividades':
-                color = 'background-color: #fff5cc'
-            elif val == 'Completa':
-                color = 'background-color: #ccffcc'
-            return color
+        agrupado = df_filtrado.groupby("delegacion")
 
-        columnas_tabla = [
-            "delegacion", "tipo", "linea", "indicador", "meta", "estado",
-            "trimestre1", "obs1", "trimestre2", "obs2",
-            "trimestre3", "obs3", "trimestre4", "obs4",
-            "detalle", "fecha"
-        ]
-        columnas_existentes = [col for col in columnas_tabla if col in df_filtrado.columns]
-        df_tabla = df_filtrado[columnas_existentes].copy()
-        df_tabla_estilado = df_tabla.style.applymap(resaltar_estado, subset=["estado"])
+        for delegacion, grupo in agrupado:
+            with st.expander(f"🏢 {delegacion}", expanded=False):
+                grupo = grupo.sort_values("linea")
 
-        st.dataframe(df_tabla_estilado, use_container_width=True)
+                for _, fila in grupo.iterrows():
+                    estado_icono = {
+                        "Sin actividades": "🔴",
+                        "Con actividades": "🟠",
+                        "Completa": "🟢"
+                    }.get(fila.get("estado", ""), "")
+
+                    with st.expander(f"{estado_icono} {fila['linea']} ({fila['tipo']}) [{fila.get('estado', '')}]"):
+                        st.write(f"**Descripción del Indicador:** {fila.get('indicador', '')}")
+                        st.write(f"**Meta:** {fila.get('meta', '')}")
+                        st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
+                        st.write(f"**Observación T1:** {fila.get('obs1', '')}")
+                        st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
+                        st.write(f"**Observación T2:** {fila.get('obs2', '')}")
+                        st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
+                        st.write(f"**Observación T3:** {fila.get('obs3', '')}")
+                        st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
+                        st.write(f"**Observación T4:** {fila.get('obs4', '')}")
+                        st.write(f"**Observaciones generales:** {fila.get('detalle', '')}")
+                        st.write(f"**Fecha:** {fila.get('fecha', '')}")
+
+                        col_edit, col_del = st.columns(2)
+                        if col_edit.button("✏️ Editar", key=f"editar_{fila['id']}"):
+                            st.session_state["modo_edicion"] = True
+                            st.session_state["respuesta_editando"] = fila.to_dict()
+                            st.rerun()
+
+                        if col_del.button("🗑️ Eliminar", key=f"eliminar_{fila['id']}"):
+                            eliminar_respuesta(fila["id"])
+                            st.success("✅ Registro eliminado correctamente.")
+                            st.rerun()
     else:
         st.info("No hay resultados con los filtros aplicados.")
 else:
