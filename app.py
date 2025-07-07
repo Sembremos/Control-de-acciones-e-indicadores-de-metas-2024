@@ -315,14 +315,17 @@ if respuestas:
         df["fecha"] = pd.to_datetime(df["fecha"]).dt.strftime("%d/%m/%Y")
 
     # Filtros
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
+
     delegaciones_disponibles = sorted(df["delegacion"].dropna().unique())
     tipos_disponibles = sorted(df["tipo"].dropna().unique())
     estados_disponibles = ["Sin actividades", "Con actividades", "Completa"]
+    lineas_disponibles = sorted(df["linea"].dropna().unique())
 
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
     filtro_tipo = col2.selectbox("👤 Filtrar por líder estratégico", ["Todos"] + tipos_disponibles)
     filtro_estado = col3.selectbox("📈 Filtrar por estado", ["Todos"] + estados_disponibles)
+    filtro_linea = col4.selectbox("📚 Filtrar por línea de acción", ["Todas"] + lineas_disponibles)
 
     df_filtrado = df.copy()
     if filtro_delegacion != "Todas":
@@ -331,10 +334,13 @@ if respuestas:
         df_filtrado = df_filtrado[df_filtrado["tipo"] == filtro_tipo]
     if filtro_estado != "Todos":
         df_filtrado = df_filtrado[df_filtrado["estado"] == filtro_estado]
+    if filtro_linea != "Todas":
+        df_filtrado = df_filtrado[df_filtrado["linea"] == filtro_linea]
 
     df_filtrado = df_filtrado.sort_values(by=["delegacion", "tipo", "linea"])
 
-    st.markdown("### 📌 Detalles por línea de acción")
+    # 🔄 Nuevo título
+    st.markdown("### 📌 Detalles por indicador")
 
     color_estado = {
         "Sin actividades": "🔴",
@@ -370,6 +376,7 @@ if respuestas:
                 st.rerun()
 else:
     st.info("Aún no hay respuestas registradas.")
+
 # -----------------------------------------
 # ✏️ MODO EDICIÓN DE RESPUESTA
 # -----------------------------------------
