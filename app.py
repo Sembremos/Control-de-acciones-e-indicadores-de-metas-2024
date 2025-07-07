@@ -408,10 +408,10 @@ if modo_edicion and isinstance(respuesta_editando, dict):
         t3 = col3.number_input("T3", min_value=0, step=1, value=int(fila.get("trimestre3", 0)))
         t4 = col4.number_input("T4", min_value=0, step=1, value=int(fila.get("trimestre4", 0)))
 
-        obs1 = st.text_input("📝 Observación T1", value=fila.get("obs1", "") or "")
-        obs2 = st.text_input("📝 Observación T2", value=fila.get("obs2", "") or "")
-        obs3 = st.text_input("📝 Observación T3", value=fila.get("obs3", "") or "")
-        obs4 = st.text_input("📝 Observación T4", value=fila.get("obs4", "") or "")
+        obs1 = st.text_input("📝 Resultado T1", value=fila.get("obs1", "") or "")
+        obs2 = st.text_input("📝 Resultado T2", value=fila.get("obs2", "") or "")
+        obs3 = st.text_input("📝 Resultado T3", value=fila.get("obs3", "") or "")
+        obs4 = st.text_input("📝 Resultado T4", value=fila.get("obs4", "") or "")
 
         detalle = st.text_area("🗒️ Observaciones generales", value=fila.get("detalle", "") or "")
 
