@@ -354,13 +354,13 @@ if respuestas:
             st.write(f"**Descripción del Indicador:** {fila.get('indicador', '')}")
             st.write(f"**Meta:** {fila.get('meta', '')}")
             st.write(f"**Trimestre 1:** {fila.get('trimestre1', 0)}")
-            st.write(f"**Observación T1:** {fila.get('obs1', '')}")
+            st.write(f"**Resultado T1:** {fila.get('obs1', '')}")
             st.write(f"**Trimestre 2:** {fila.get('trimestre2', 0)}")
-            st.write(f"**Observación T2:** {fila.get('obs2', '')}")
+            st.write(f"**Resultado T2:** {fila.get('obs2', '')}")
             st.write(f"**Trimestre 3:** {fila.get('trimestre3', 0)}")
-            st.write(f"**Observación T3:** {fila.get('obs3', '')}")
+            st.write(f"**Resultado T3:** {fila.get('obs3', '')}")
             st.write(f"**Trimestre 4:** {fila.get('trimestre4', 0)}")
-            st.write(f"**Observación T4:** {fila.get('obs4', '')}")
+            st.write(f"**Resultado T4:** {fila.get('obs4', '')}")
             st.write(f"**Observaciones generales:** {fila.get('detalle', '')}")
             st.write(f"**Fecha:** {fila.get('fecha', '')}")
 
@@ -479,13 +479,13 @@ if respuestas:
         "meta": "Meta",
         "estado": "Estado",
         "trimestre1": "Trimestre 1",
-        "obs1": "Observación T1",
+        "obs1": "ResultadoT1",
         "trimestre2": "Trimestre 2",
-        "obs2": "Observación T2",
+        "obs2": "Resultado T2",
         "trimestre3": "Trimestre 3",
-        "obs3": "Observación T3",
+        "obs3": "Resultado T3",
         "trimestre4": "Trimestre 4",
-        "obs4": "Observación T4",
+        "obs4": "Resultado T4",
         "detalle": "Observaciones Generales",
         "fecha": "Fecha de Registro"
     }, inplace=True)
