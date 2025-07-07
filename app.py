@@ -466,13 +466,13 @@ if not df_filtrado.empty:
         "meta": "Meta",
         "estado": "Estado",
         "trimestre1": "Trimestre 1",
-        "obs1": "Observación T1",
+        "obs1": "Resultado T1",
         "trimestre2": "Trimestre 2",
-        "obs2": "Observación T2",
+        "obs2": "Resultado T2",
         "trimestre3": "Trimestre 3",
-        "obs3": "Observación T3",
+        "obs3": "Resultado T3",
         "trimestre4": "Trimestre 4",
-        "obs4": "Observación T4",
+        "obs4": "Resultado T4",
         "detalle": "Observaciones Generales",
         "fecha": "Fecha de Registro"
     }, inplace=True)
