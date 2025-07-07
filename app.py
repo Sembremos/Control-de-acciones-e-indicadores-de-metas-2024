@@ -254,7 +254,7 @@ lineas_accion = [
     "ZONAS VULNERABLES"
 ]
 
-lineas_seleccionadas = st.multiselect("📚 Selecciona una o más líneas de acción", lineas_accion)
+lineas_seleccionadas = st.multiselect("📚 Selecciona una o más problemáticas", lineas_accion)
 
 if delegacion and tipo_lider and lineas_seleccionadas:
     with st.form("form_lineas_accion"):
@@ -325,7 +325,7 @@ if respuestas:
     filtro_delegacion = col1.selectbox("📍 Filtrar por delegación", ["Todas"] + delegaciones_disponibles)
     filtro_tipo = col2.selectbox("👤 Filtrar por líder estratégico", ["Todos"] + tipos_disponibles)
     filtro_estado = col3.selectbox("📈 Filtrar por estado", ["Todos"] + estados_disponibles)
-    filtro_linea = col4.selectbox("📚 Filtrar por línea de acción", ["Todas"] + lineas_disponibles)
+    filtro_linea = col4.selectbox("📚 Filtrar por problemática", ["Todas"] + lineas_disponibles)
 
     df_filtrado = df.copy()
     if filtro_delegacion != "Todas":
