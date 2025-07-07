@@ -268,10 +268,10 @@ if delegacion and tipo_lider and lineas_seleccionadas:
         t3 = col3.number_input("T3", min_value=0, step=1)
         t4 = col4.number_input("T4", min_value=0, step=1)
 
-        obs1 = st.text_input("📝 Observación T1")
-        obs2 = st.text_input("📝 Observación T2")
-        obs3 = st.text_input("📝 Observación T3")
-        obs4 = st.text_input("📝 Observación T4")
+        obs1 = st.text_input("📝 Resultado T1")
+        obs2 = st.text_input("📝 Resultado T2")
+        obs3 = st.text_input("📝 Resultado T3")
+        obs4 = st.text_input("📝 Resultado T4")
 
         detalle = st.text_area("🗒️ Observaciones generales")
 
